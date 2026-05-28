@@ -32,6 +32,7 @@ export interface CRAProjectDetail extends CRAProject {
 export interface BoardSession {
   userId: string;
   positionName: Position["name"];
+  /** president = full access + admin | officer = edit any section | member = edit own only */
   positionRole: Position["role"];
   email: string;
 }

@@ -261,7 +261,7 @@ export type PositionName =
   | "tennis"
   | "social";
 
-export type PositionRole = "president" | "member";
+export type PositionRole = "president" | "officer" | "member";
 
 export type ArchitectureStatus = "pending" | "approved" | "denied";
 

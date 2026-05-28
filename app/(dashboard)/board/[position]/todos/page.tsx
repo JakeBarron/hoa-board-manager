@@ -1,8 +1,10 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { canEditSection } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
-import { EmptyState } from "@/components/hoa/EmptyState";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import type { PositionName } from "@/types/database";
+import { SectionCard } from "@/components/hoa/SectionCard";
+import { TodoList } from "@/components/hoa/TodoList";
+import type { PositionName, Todo } from "@/types/database";
 
 const POSITION_LABELS: Record<PositionName, string> = {
   president:  "President",
@@ -15,26 +17,65 @@ const POSITION_LABELS: Record<PositionName, string> = {
   social:     "Social",
 };
 
-interface TodosPageProps {
+interface Props {
   params: Promise<{ position: string }>;
 }
 
-export default async function TodosPage({ params }: TodosPageProps) {
+/**
+ * Full to-do list for a board position.
+ * Incomplete items sort first; within each group, newest first.
+ * Add/toggle/delete controls shown only when the current user has edit rights.
+ */
+export default async function TodosPage({ params }: Props) {
   const { position } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const [currentPosResult, targetPosResult] = await Promise.all([
+    supabase.from("positions").select("id, name, role").eq("email", user.email!).single(),
+    supabase.from("positions").select("id, name").eq("name", position as PositionName).single(),
+  ]);
+  const currentPosition = currentPosResult.data;
+  const targetPosition = targetPosResult.data;
+
+  if (!currentPosition) redirect("/login");
+  if (!targetPosition) redirect("/dashboard");
+
+  const { data: todos } = await supabase
+    .from("todos")
+    .select("*")
+    .eq("position_id", targetPosition.id)
+    .order("completed", { ascending: true })
+    .order("created_at", { ascending: false });
+
   const label = POSITION_LABELS[position as PositionName] ?? position;
+  const editable = canEditSection(
+    currentPosition.name as PositionName,
+    targetPosition.name as PositionName,
+    currentPosition.role
+  );
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={`${label} — To-Do List`}
-        action={
-          <Button variant="outline" render={<Link href={`/board/${position}`} />}>Back</Button>
+        subtitle={
+          editable
+            ? "Add, complete, or remove to-dos for this position."
+            : "Read-only view."
         }
       />
-      <EmptyState
-        title="No todos yet"
-        description="Add tasks to keep track of what needs to be done."
-      />
+      <SectionCard title="To-Dos">
+        <TodoList
+          todos={(todos ?? []) as Todo[]}
+          positionId={targetPosition.id}
+          canEdit={editable}
+        />
+      </SectionCard>
     </div>
   );
 }

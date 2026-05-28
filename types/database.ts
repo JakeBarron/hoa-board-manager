@@ -6,6 +6,9 @@
  *
  * Until then, this stub satisfies the TypeScript compiler and allows development
  * to proceed without a live Supabase connection.
+ *
+ * NOTE: Every table must include `Relationships: []` to satisfy GenericTable
+ * from @supabase/postgrest-js, which requires that field for structural compatibility.
  */
 export type Database = {
   public: {
@@ -32,6 +35,7 @@ export type Database = {
           role?: PositionRole;
           created_at?: string;
         };
+        Relationships: [];
       };
       architecture_requests: {
         Row: {
@@ -68,6 +72,7 @@ export type Database = {
           notes?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       architecture_documents: {
         Row: {
@@ -87,6 +92,7 @@ export type Database = {
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
       };
       cra_projects: {
         Row: {
@@ -117,6 +123,7 @@ export type Database = {
           estimated_cost?: number | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
       cra_quotes: {
         Row: {
@@ -141,6 +148,7 @@ export type Database = {
           notes?: string | null;
           document_url?: string | null;
         };
+        Relationships: [];
       };
       cra_updates: {
         Row: {
@@ -158,6 +166,7 @@ export type Database = {
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
       };
       cra_documents: {
         Row: {
@@ -177,6 +186,7 @@ export type Database = {
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
       };
       meeting_minutes: {
         Row: {
@@ -199,6 +209,7 @@ export type Database = {
           content?: string | null;
           google_doc_url?: string | null;
         };
+        Relationships: [];
       };
       todos: {
         Row: {
@@ -222,6 +233,7 @@ export type Database = {
           completed?: boolean;
           updated_at?: string;
         };
+        Relationships: [];
       };
       pre_meeting_updates: {
         Row: {
@@ -241,6 +253,145 @@ export type Database = {
         Update: {
           content?: string;
         };
+        Relationships: [];
+      };
+      settings: {
+        Row: {
+          key: string;
+          value: string;
+          description: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          key: string;
+          value: string;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          value?: string;
+          description?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      meetings: {
+        Row: {
+          id: string;
+          meeting_date: string;
+          called_by: string;
+          seconded_by: string | null;
+          seconded_at: string | null;
+          started_at: string | null;
+          adjourned_at: string | null;
+          status: MeetingStatus;
+          minutes_content: string | null;
+          minutes_drive_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          meeting_date: string;
+          called_by: string;
+          seconded_by?: string | null;
+          seconded_at?: string | null;
+          started_at?: string | null;
+          adjourned_at?: string | null;
+          status?: MeetingStatus;
+          minutes_content?: string | null;
+          minutes_drive_url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          seconded_by?: string | null;
+          seconded_at?: string | null;
+          started_at?: string | null;
+          adjourned_at?: string | null;
+          status?: MeetingStatus;
+          minutes_content?: string | null;
+          minutes_drive_url?: string | null;
+        };
+        Relationships: [];
+      };
+      meeting_documents: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          name: string;
+          drive_url: string;
+          doc_type: MeetingDocType;
+          amendment_number: number | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          name: string;
+          drive_url: string;
+          doc_type?: MeetingDocType;
+          amendment_number?: number | null;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      motions: {
+        Row: {
+          id: string;
+          meeting_id: string;
+          title: string;
+          description: string | null;
+          proposed_by: string;
+          seconded_by: string | null;
+          proposed_at: string;
+          seconded_at: string | null;
+          status: MotionStatus;
+          quorum_met: boolean | null;
+          closed_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          meeting_id: string;
+          title: string;
+          description?: string | null;
+          proposed_by: string;
+          seconded_by?: string | null;
+          proposed_at?: string;
+          seconded_at?: string | null;
+          status?: MotionStatus;
+          quorum_met?: boolean | null;
+          closed_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          seconded_by?: string | null;
+          seconded_at?: string | null;
+          status?: MotionStatus;
+          quorum_met?: boolean | null;
+          closed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      motion_votes: {
+        Row: {
+          id: string;
+          motion_id: string;
+          position_id: string;
+          vote: VoteChoice;
+          recorded_by: string;
+          voted_at: string;
+        };
+        Insert: {
+          id?: string;
+          motion_id: string;
+          position_id: string;
+          vote: VoteChoice;
+          recorded_by: string;
+          voted_at?: string;
+        };
+        Update: never;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;
@@ -278,6 +429,20 @@ export type CRAProjectStatus =
 
 export type DocumentUrlType = "google_doc" | "storage_file";
 
+export type MeetingStatus = "pending" | "in_progress" | "adjourned";
+
+export type MeetingDocType = "minutes" | "amendment";
+
+export type MotionStatus =
+  | "proposed"
+  | "seconded"
+  | "voting"
+  | "passed"
+  | "failed"
+  | "tabled";
+
+export type VoteChoice = "yay" | "nay" | "absent" | "no_vote";
+
 // ─── Convenience row types ───────────────────────────────────────────────────
 
 export type Position = Database["public"]["Tables"]["positions"]["Row"];
@@ -290,3 +455,8 @@ export type CRADocument = Database["public"]["Tables"]["cra_documents"]["Row"];
 export type MeetingMinutes = Database["public"]["Tables"]["meeting_minutes"]["Row"];
 export type Todo = Database["public"]["Tables"]["todos"]["Row"];
 export type PreMeetingUpdate = Database["public"]["Tables"]["pre_meeting_updates"]["Row"];
+export type Setting = Database["public"]["Tables"]["settings"]["Row"];
+export type Meeting = Database["public"]["Tables"]["meetings"]["Row"];
+export type MeetingDocument = Database["public"]["Tables"]["meeting_documents"]["Row"];
+export type Motion = Database["public"]["Tables"]["motions"]["Row"];
+export type MotionVote = Database["public"]["Tables"]["motion_votes"]["Row"];

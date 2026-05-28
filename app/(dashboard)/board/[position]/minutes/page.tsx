@@ -7,6 +7,7 @@ import type { PositionName } from "@/types/database";
 const POSITION_LABELS: Record<PositionName, string> = {
   president:  "President",
   vp:         "Vice President",
+  secretary:  "Secretary",
   treasurer:  "Treasurer",
   pool:       "Pool",
   membership: "Membership",

@@ -254,6 +254,7 @@ export type Database = {
 export type PositionName =
   | "president"
   | "vp"
+  | "secretary"
   | "treasurer"
   | "pool"
   | "membership"

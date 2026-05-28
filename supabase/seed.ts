@@ -37,6 +37,7 @@ const positions: Array<{
 }> = [
   { name: "president",   role: "president", email: "president@yourhoa.com",   password: "ChangeMe123!" },
   { name: "vp",          role: "member",    email: "vp@yourhoa.com",           password: "ChangeMe123!" },
+  { name: "secretary",   role: "member",    email: "secretary@yourhoa.com",    password: "ChangeMe123!" },
   { name: "treasurer",   role: "member",    email: "treasurer@yourhoa.com",    password: "ChangeMe123!" },
   { name: "pool",        role: "member",    email: "pool@yourhoa.com",         password: "ChangeMe123!" },
   { name: "membership",  role: "member",    email: "membership@yourhoa.com",   password: "ChangeMe123!" },

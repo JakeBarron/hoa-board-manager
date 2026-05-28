@@ -25,6 +25,7 @@ const PRIMARY_NAV: NavItem[] = [
 const BOARD_POSITIONS: NavItem[] = [
   { label: "President", href: "/board/president" },
   { label: "Vice President", href: "/board/vp" },
+  { label: "Secretary", href: "/board/secretary" },
   { label: "Treasurer", href: "/board/treasurer" },
   { label: "Pool", href: "/board/pool" },
   { label: "Membership", href: "/board/membership" },

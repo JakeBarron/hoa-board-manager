@@ -59,15 +59,15 @@ const seedPosition = async (pos: (typeof positions)[number]): Promise<void> => {
 
   if (authError) {
     if (authError.message.includes("already been registered")) {
-      console.log(`  ⟳ ${pos.name} already exists, skipping`);
-      return;
+      console.log(`  ⟳ Auth user for ${pos.name} already exists`);
+    } else {
+      throw new Error(`Failed to create auth user for ${pos.name}: ${authError.message}`);
     }
-    throw new Error(`Failed to create auth user for ${pos.name}: ${authError.message}`);
+  } else {
+    console.log(`  ✓ Created auth user for ${pos.name}: ${authData.user?.id}`);
   }
 
-  console.log(`  ✓ Created auth user for ${pos.name}: ${authData.user?.id}`);
-
-  // Insert the positions row
+  // Insert the positions row — independent of whether the auth user was just created
   const { error: dbError } = await supabase.from("positions").insert({
     name: pos.name,
     email: pos.email,
@@ -76,7 +76,7 @@ const seedPosition = async (pos: (typeof positions)[number]): Promise<void> => {
 
   if (dbError) {
     if (dbError.code === "23505") {
-      console.log(`  ⟳ Position row for ${pos.name} already exists, skipping`);
+      console.log(`  ⟳ Position row for ${pos.name} already exists`);
       return;
     }
     throw new Error(`Failed to insert position row for ${pos.name}: ${dbError.message}`);

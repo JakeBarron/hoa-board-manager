@@ -1,0 +1,27 @@
+import { PageHeader } from "@/components/hoa/PageHeader";
+import { EmptyState } from "@/components/hoa/EmptyState";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+export const metadata = { title: "CRA Projects — HOA Board" };
+
+export default function CRAPage() {
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Capital Reserves Analysis"
+        subtitle="Track ongoing capital improvement projects"
+        action={
+          <Button render={<Link href="/cra/new" />}>New Project</Button>
+        }
+      />
+      <EmptyState
+        title="No CRA projects yet"
+        description="Create a new project to start tracking quotes and status updates."
+        action={
+          <Button variant="outline" render={<Link href="/cra/new" />}>New Project</Button>
+        }
+      />
+    </div>
+  );
+}

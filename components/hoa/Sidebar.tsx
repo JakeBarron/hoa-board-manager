@@ -15,6 +15,7 @@ interface NavItem {
 /** Top-level nav items visible to all board members */
 const PRIMARY_NAV: NavItem[] = [
   { label: "Dashboard", href: "/dashboard" },
+  { label: "Meetings", href: "/meetings" },
   { label: "Architecture", href: "/architecture" },
   { label: "CRA Projects", href: "/cra" },
   { label: "Pre-Meeting Update", href: "/pre-meeting" },
@@ -36,6 +37,7 @@ const BOARD_POSITIONS: NavItem[] = [
 /** Admin nav — only shown to the president */
 const ADMIN_NAV: NavItem[] = [
   { label: "Manage Positions", href: "/admin/positions" },
+  { label: "Settings", href: "/admin/settings" },
 ];
 
 interface SidebarProps {

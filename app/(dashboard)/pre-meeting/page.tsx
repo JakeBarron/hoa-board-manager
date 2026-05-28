@@ -4,7 +4,7 @@ import { canEditAll } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
-import { getUpcomingMondays, formatMeetingDate } from "@/lib/dates";
+import { getUpcomingMeetingDates, formatMeetingDate } from "@/lib/dates";
 import type { PositionName } from "@/types/database";
 
 export const metadata = { title: "Pre-Meeting Updates — HOA Board" };
@@ -43,18 +43,23 @@ export default async function PreMeetingPage({ searchParams }: Props) {
 
   const today = new Date().toISOString().split("T")[0];
 
-  const { data: scheduledMeetings } = await supabase
-    .from("meetings")
-    .select("meeting_date")
-    .gte("meeting_date", today)
-    .in("status", ["pending", "in_progress"])
-    .order("meeting_date", { ascending: true })
-    .limit(3);
+  const [scheduledMeetingsResult, cadenceResult] = await Promise.all([
+    supabase
+      .from("meetings")
+      .select("meeting_date")
+      .gte("meeting_date", today)
+      .in("status", ["pending", "in_progress"])
+      .order("meeting_date", { ascending: true })
+      .limit(3),
+    supabase.from("settings").select("value").eq("key", "meeting_cadence").single(),
+  ]);
 
-  const scheduledDates = (scheduledMeetings ?? []).map(
+  const cadence = cadenceResult.data?.value ?? "3:2";
+  const scheduledDates = (scheduledMeetingsResult.data ?? []).map(
     (m: { meeting_date: string }) => m.meeting_date
   );
-  const meetingDates = scheduledDates.length > 0 ? scheduledDates : getUpcomingMondays(3);
+  const meetingDates =
+    scheduledDates.length > 0 ? scheduledDates : getUpcomingMeetingDates(cadence, 3);
   const selectedDate = date ?? meetingDates[0];
 
   const [updatesResult, positionsResult] = await Promise.all([

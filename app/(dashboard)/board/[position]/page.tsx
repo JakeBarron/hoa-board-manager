@@ -8,7 +8,7 @@ import { TodoList } from "@/components/hoa/TodoList";
 import { PreMeetingForm } from "@/components/hoa/PreMeetingForm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getUpcomingMondays, formatMeetingDate } from "@/lib/dates";
+import { getUpcomingMeetingDates, formatMeetingDate } from "@/lib/dates";
 import type { PositionName, Todo } from "@/types/database";
 
 const POSITION_LABELS: Record<PositionName, string> = {
@@ -55,7 +55,7 @@ export default async function BoardPositionPage({ params }: Props) {
   // Fetch todos and — if on own page — meeting dates + existing update in parallel
   const today = new Date().toISOString().split("T")[0];
 
-  const [todosResult, scheduledMeetingsResult] = await Promise.all([
+  const [todosResult, scheduledMeetingsResult, cadenceResult] = await Promise.all([
     supabase
       .from("todos")
       .select("*")
@@ -72,13 +72,18 @@ export default async function BoardPositionPage({ params }: Props) {
           .order("meeting_date", { ascending: true })
           .limit(3)
       : Promise.resolve({ data: null }),
+    isOwnPage
+      ? supabase.from("settings").select("value").eq("key", "meeting_cadence").single()
+      : Promise.resolve({ data: null }),
   ]);
 
   const todos = todosResult.data;
+  const cadence = cadenceResult.data?.value ?? "3:2";
   const scheduledDates = (scheduledMeetingsResult.data ?? []).map(
     (m: { meeting_date: string }) => m.meeting_date
   );
-  const meetingDates = scheduledDates.length > 0 ? scheduledDates : getUpcomingMondays(3);
+  const meetingDates =
+    scheduledDates.length > 0 ? scheduledDates : getUpcomingMeetingDates(cadence, 3);
   const nextMeetingDate = meetingDates[0];
 
   // Fetch existing pre-meeting update only when on own page

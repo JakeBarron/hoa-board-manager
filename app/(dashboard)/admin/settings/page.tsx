@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { SettingRow } from "@/components/hoa/SettingRow";
+import { MeetingCadenceRow } from "@/components/hoa/MeetingCadenceRow";
 import type { Setting } from "@/types/database";
 
 export const metadata = { title: "Settings — HOA Board" };
@@ -52,15 +53,24 @@ export default async function SettingsPage() {
         description="Add new settings directly in the database — they appear here automatically."
       >
         <div className="divide-y divide-border">
-          {(settings ?? []).map((s: Setting) => (
-            <SettingRow
-              key={s.key}
-              settingKey={s.key}
-              label={keyToLabel(s.key)}
-              description={s.description}
-              initialValue={s.value}
-            />
-          ))}
+          {(settings ?? []).map((s: Setting) =>
+            s.key === "meeting_cadence" ? (
+              <MeetingCadenceRow
+                key={s.key}
+                settingKey={s.key}
+                description={s.description}
+                initialValue={s.value}
+              />
+            ) : (
+              <SettingRow
+                key={s.key}
+                settingKey={s.key}
+                label={keyToLabel(s.key)}
+                description={s.description}
+                initialValue={s.value}
+              />
+            )
+          )}
         </div>
       </SectionCard>
     </div>

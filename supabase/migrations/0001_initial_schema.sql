@@ -205,3 +205,11 @@ create policy "pre_meeting_insert" on pre_meeting_updates for insert to authenti
   with check ((select id from current_position()) = position_id);
 create policy "pre_meeting_update" on pre_meeting_updates for update to authenticated
   using ((select id from current_position()) = position_id);
+
+-- ─── Grants ─────────────────────────────────────────────────────────────────
+-- Tables created via raw SQL don't automatically inherit Supabase's default
+-- grants. Explicitly grant all permissions so anon, authenticated, and
+-- service_role can access the tables through the Data API (PostgREST).
+grant all on all tables    in schema public to anon, authenticated, service_role;
+grant all on all sequences in schema public to anon, authenticated, service_role;
+grant all on all routines  in schema public to anon, authenticated, service_role;

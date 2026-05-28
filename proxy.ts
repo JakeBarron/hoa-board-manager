@@ -5,7 +5,7 @@ import { updateSession } from "@/lib/supabase/middleware";
  * Next.js middleware — runs on every matched request.
  * Delegates to Supabase session refresh logic and route protection.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   return updateSession(request);
 }
 

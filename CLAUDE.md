@@ -30,11 +30,15 @@ Internal board management portal for an HOA. Also a portfolio project for Jake (
 
 shadcn/ui v4 uses `@base-ui/react`. **`asChild` does not exist.** To render a Button as a Link:
 ```tsx
-// ✅ correct
-<Button render={<Link href="/path" />}>Label</Button>
+// ✅ correct — nativeButton={false} required because Link renders <a>, not <button>
+<Button nativeButton={false} render={<Link href="/path" />}>Label</Button>
 
 // ❌ wrong — will not compile
 <Button asChild><Link href="/path">Label</Link></Button>
+
+// ❌ wrong — omitting nativeButton={false} triggers a Base UI accessibility warning
+//           because <Link> renders <a> but Button expects a <button> by default
+<Button render={<Link href="/path" />}>Label</Button>
 ```
 
 ---

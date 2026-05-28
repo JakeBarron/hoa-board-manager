@@ -11,7 +11,7 @@ export default function NewArchitectureRequestPage() {
         title="New Architecture Request"
         subtitle="Upload a scanned form and describe the project"
         action={
-          <Button variant="outline" render={<Link href="/architecture" />}>Cancel</Button>
+          <Button variant="outline" nativeButton={false} render={<Link href="/architecture" />}>Cancel</Button>
         }
       />
       <p className="text-sm text-muted-foreground">Coming soon — form goes here.</p>

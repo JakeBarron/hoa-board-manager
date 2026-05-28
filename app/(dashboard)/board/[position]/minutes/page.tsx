@@ -67,7 +67,7 @@ export default async function MinutesPage({ params }: Props) {
         subtitle="Board meeting minutes in chronological order."
         action={
           editable ? (
-            <Button render={<Link href={`/board/${position}/minutes/new`} />}>
+            <Button nativeButton={false} render={<Link href={`/board/${position}/minutes/new`} />}>
               Add minutes
             </Button>
           ) : undefined
@@ -86,7 +86,7 @@ export default async function MinutesPage({ params }: Props) {
               editable ? (
                 <Button
                   variant="outline"
-                  render={<Link href={`/board/${position}/minutes/new`} />}
+                  nativeButton={false} render={<Link href={`/board/${position}/minutes/new`} />}
                 >
                   Add minutes
                 </Button>

@@ -11,7 +11,7 @@ export default function NewCRAProjectPage() {
         title="New CRA Project"
         subtitle="Add a new capital improvement project"
         action={
-          <Button variant="outline" render={<Link href="/cra" />}>Cancel</Button>
+          <Button variant="outline" nativeButton={false} render={<Link href="/cra" />}>Cancel</Button>
         }
       />
       <p className="text-sm text-muted-foreground">Coming soon — form goes here.</p>

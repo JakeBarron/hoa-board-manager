@@ -59,7 +59,7 @@ export default async function ArchitecturePage() {
   const userCanVote = position ? canRecordVote(position.role) : false;
 
   const newRequestButton = (
-    <Button render={<Link href="/architecture/new" />}>New Request</Button>
+    <Button nativeButton={false} render={<Link href="/architecture/new" />}>New Request</Button>
   );
 
   return (
@@ -78,7 +78,7 @@ export default async function ArchitecturePage() {
             action={
               <Button
                 variant="outline"
-                render={<Link href="/architecture/new" />}
+                nativeButton={false} render={<Link href="/architecture/new" />}
               >
                 New Request
               </Button>

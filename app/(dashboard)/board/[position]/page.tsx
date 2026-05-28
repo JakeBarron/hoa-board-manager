@@ -77,7 +77,7 @@ export default async function BoardPositionPage({ params }: Props) {
             <Button
               size="sm"
               variant="outline"
-              render={<Link href={`/board/${position}/minutes`} />}
+              nativeButton={false} render={<Link href={`/board/${position}/minutes`} />}
             >
               View all
             </Button>
@@ -92,7 +92,7 @@ export default async function BoardPositionPage({ params }: Props) {
             <Button
               size="sm"
               variant="outline"
-              render={<Link href={`/board/${position}/todos`} />}
+              nativeButton={false} render={<Link href={`/board/${position}/todos`} />}
             >
               View all
             </Button>

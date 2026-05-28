@@ -63,7 +63,7 @@ export default async function NewMinutesPage({ params }: Props) {
         title={`${label} — New Minutes`}
         subtitle="Write the meeting minutes, save, then export to .docx for Google Drive."
         action={
-          <Button variant="outline" render={<Link href={`/board/${position}/minutes`} />}>
+          <Button variant="outline" nativeButton={false} render={<Link href={`/board/${position}/minutes`} />}>
             Cancel
           </Button>
         }

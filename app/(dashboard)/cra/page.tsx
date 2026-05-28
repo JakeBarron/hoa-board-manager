@@ -12,14 +12,14 @@ export default function CRAPage() {
         title="Capital Reserves Analysis"
         subtitle="Track ongoing capital improvement projects"
         action={
-          <Button render={<Link href="/cra/new" />}>New Project</Button>
+          <Button nativeButton={false} render={<Link href="/cra/new" />}>New Project</Button>
         }
       />
       <EmptyState
         title="No CRA projects yet"
         description="Create a new project to start tracking quotes and status updates."
         action={
-          <Button variant="outline" render={<Link href="/cra/new" />}>New Project</Button>
+          <Button variant="outline" nativeButton={false} render={<Link href="/cra/new" />}>New Project</Button>
         }
       />
     </div>

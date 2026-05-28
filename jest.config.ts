@@ -10,8 +10,8 @@ const config: Config = {
   coverageProvider: "v8",
   testEnvironment: "jsdom",
   setupFilesAfterEnv: ["<rootDir>/jest.setup.ts"],
+  testPathIgnorePatterns: ["/node_modules/", "/.claude/"],
   moduleNameMapper: {
-    // Ensure @/ alias resolves correctly in tests
     "^@/(.*)$": "<rootDir>/$1",
   },
 };

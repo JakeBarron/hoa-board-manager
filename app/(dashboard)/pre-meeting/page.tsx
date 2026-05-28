@@ -3,21 +3,21 @@ import { createClient } from "@/lib/supabase/server";
 import { canEditAll } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
-import { PreMeetingForm } from "@/components/hoa/PreMeetingForm";
+import { EmptyState } from "@/components/hoa/EmptyState";
 import { getUpcomingMondays, formatMeetingDate } from "@/lib/dates";
 import type { PositionName } from "@/types/database";
 
-export const metadata = { title: "Pre-Meeting Update — HOA Board" };
+export const metadata = { title: "Pre-Meeting Updates — HOA Board" };
 
 interface Props {
   searchParams: Promise<{ date?: string }>;
 }
 
 /**
- * Pre-meeting status update page.
- * Each board member submits their monthly update ahead of the meeting.
- * Officers and president also see all submitted updates for the selected date
- * so they can prepare the agenda.
+ * Pre-meeting updates aggregate view — officer and president only.
+ * Members submit their update from their own position dashboard (/board/[position]).
+ * Officers and president use this page to review all submitted updates before
+ * preparing the meeting agenda.
  */
 export default async function PreMeetingPage({ searchParams }: Props) {
   const { date } = await searchParams;
@@ -36,88 +36,102 @@ export default async function PreMeetingPage({ searchParams }: Props) {
 
   if (!currentPosition) redirect("/login");
 
-  const upcomingMondays = getUpcomingMondays(3);
-  const selectedDate = date ?? upcomingMondays[0];
-
-  // Fetch the current user's existing update for the selected date (if any)
-  const { data: existingUpdate } = await supabase
-    .from("pre_meeting_updates")
-    .select("content")
-    .eq("position_id", currentPosition.id)
-    .eq("meeting_date", selectedDate)
-    .maybeSingle();
-
-  // Officers and president see all submitted updates for the date
-  const isOfficerOrAbove = canEditAll(currentPosition.role);
-  let allUpdates: { positionName: string; content: string; submittedAt: string }[] = [];
-
-  if (isOfficerOrAbove) {
-    const [updatesResult, positionsResult] = await Promise.all([
-      supabase
-        .from("pre_meeting_updates")
-        .select("position_id, content, submitted_at")
-        .eq("meeting_date", selectedDate)
-        .order("submitted_at"),
-      supabase.from("positions").select("id, name"),
-    ]);
-
-    const positions = positionsResult.data ?? [];
-    allUpdates = (updatesResult.data ?? []).map((u) => ({
-      positionName:
-        positions.find((p) => p.id === u.position_id)?.name ?? "Unknown",
-      content: u.content,
-      submittedAt: u.submitted_at,
-    }));
+  // Members submit updates from their own position page — redirect them there
+  if (!canEditAll(currentPosition.role)) {
+    redirect(`/board/${currentPosition.name}`);
   }
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data: scheduledMeetings } = await supabase
+    .from("meetings")
+    .select("meeting_date")
+    .gte("meeting_date", today)
+    .in("status", ["pending", "in_progress"])
+    .order("meeting_date", { ascending: true })
+    .limit(3);
+
+  const scheduledDates = (scheduledMeetings ?? []).map(
+    (m: { meeting_date: string }) => m.meeting_date
+  );
+  const meetingDates = scheduledDates.length > 0 ? scheduledDates : getUpcomingMondays(3);
+  const selectedDate = date ?? meetingDates[0];
+
+  const [updatesResult, positionsResult] = await Promise.all([
+    supabase
+      .from("pre_meeting_updates")
+      .select("position_id, content, submitted_at")
+      .eq("meeting_date", selectedDate)
+      .order("submitted_at"),
+    supabase.from("positions").select("id, name"),
+  ]);
+
+  const positions = positionsResult.data ?? [];
+  const allUpdates = (updatesResult.data ?? []).map((u) => ({
+    positionName: positions.find((p) => p.id === u.position_id)?.name ?? "Unknown",
+    content: u.content,
+    submittedAt: u.submitted_at,
+  }));
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pre-Meeting Status Update"
-        subtitle="Submit your update before the monthly board meeting."
+        title="Pre-Meeting Updates"
+        subtitle="Review all submitted position updates before the meeting."
       />
 
-      <SectionCard title="Your Update">
-        <PreMeetingForm
-          positionId={currentPosition.id}
-          selectedDate={selectedDate}
-          upcomingMondays={upcomingMondays}
-          existingContent={existingUpdate?.content ?? undefined}
-        />
-      </SectionCard>
+      {/* Date tabs */}
+      <div className="flex gap-2">
+        {meetingDates.map((d) => (
+          <a
+            key={d}
+            href={`/pre-meeting?date=${d}`}
+            className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+              d === selectedDate
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background text-foreground hover:bg-muted"
+            }`}
+          >
+            {formatMeetingDate(d)}
+          </a>
+        ))}
+      </div>
 
-      {isOfficerOrAbove && (
-        <SectionCard
-          title={`All Submitted Updates — ${formatMeetingDate(selectedDate)}`}
-          description={
-            allUpdates.length === 0
-              ? "No updates submitted yet."
-              : `${allUpdates.length} of 8 positions submitted`
-          }
-        >
-          {allUpdates.length > 0 && (
-            <ul className="divide-y divide-border">
-              {allUpdates.map((u) => (
-                <li key={u.positionName} className="py-4 space-y-1">
-                  <p className="text-sm font-medium capitalize">{u.positionName}</p>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {u.content}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Submitted{" "}
-                    {new Date(u.submittedAt).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SectionCard>
-      )}
+      <SectionCard
+        title={`Submissions — ${formatMeetingDate(selectedDate)}`}
+        description={
+          allUpdates.length === 0
+            ? "No updates submitted yet."
+            : `${allUpdates.length} of 8 positions submitted`
+        }
+      >
+        {allUpdates.length === 0 ? (
+          <EmptyState
+            title="No updates yet"
+            description="Board members submit updates from their position dashboard."
+          />
+        ) : (
+          <ul className="divide-y divide-border">
+            {allUpdates.map((u) => (
+              <li key={u.positionName} className="space-y-1 py-4">
+                <p className="text-sm font-medium capitalize">{u.positionName}</p>
+                <p className="text-sm whitespace-pre-wrap text-muted-foreground">
+                  {u.content}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Submitted{" "}
+                  {new Date(u.submittedAt).toLocaleString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </SectionCard>
     </div>
   );
 }

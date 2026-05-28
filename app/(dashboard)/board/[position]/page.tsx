@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
 import { TodoList } from "@/components/hoa/TodoList";
+import { PreMeetingForm } from "@/components/hoa/PreMeetingForm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { getUpcomingMondays, formatMeetingDate } from "@/lib/dates";
 import type { PositionName, Todo } from "@/types/database";
 
 const POSITION_LABELS: Record<PositionName, string> = {
@@ -26,8 +28,8 @@ interface Props {
 
 /**
  * Per-position board dashboard.
- * Shows a preview of recent to-dos and a stub for meeting minutes.
- * Resolves both the current user's position and the viewed position in parallel.
+ * Shows recent todos, a minutes preview, and — when viewing your own page —
+ * the pre-meeting update form for the next scheduled meeting.
  */
 export default async function BoardPositionPage({ params }: Props) {
   const { position } = await params;
@@ -48,14 +50,47 @@ export default async function BoardPositionPage({ params }: Props) {
   if (!currentPosition) redirect("/login");
   if (!targetPosition) redirect("/dashboard");
 
-  // Fetch the 5 most recent incomplete todos for the preview card
-  const { data: todos } = await supabase
-    .from("todos")
-    .select("*")
-    .eq("position_id", targetPosition.id)
-    .eq("completed", false)
-    .order("created_at", { ascending: false })
-    .limit(5);
+  const isOwnPage = currentPosition.id === targetPosition.id;
+
+  // Fetch todos and — if on own page — meeting dates + existing update in parallel
+  const today = new Date().toISOString().split("T")[0];
+
+  const [todosResult, scheduledMeetingsResult] = await Promise.all([
+    supabase
+      .from("todos")
+      .select("*")
+      .eq("position_id", targetPosition.id)
+      .eq("completed", false)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    isOwnPage
+      ? supabase
+          .from("meetings")
+          .select("meeting_date")
+          .gte("meeting_date", today)
+          .in("status", ["pending", "in_progress"])
+          .order("meeting_date", { ascending: true })
+          .limit(3)
+      : Promise.resolve({ data: null }),
+  ]);
+
+  const todos = todosResult.data;
+  const scheduledDates = (scheduledMeetingsResult.data ?? []).map(
+    (m: { meeting_date: string }) => m.meeting_date
+  );
+  const meetingDates = scheduledDates.length > 0 ? scheduledDates : getUpcomingMondays(3);
+  const nextMeetingDate = meetingDates[0];
+
+  // Fetch existing pre-meeting update only when on own page
+  const existingUpdate = isOwnPage
+    ? await supabase
+        .from("pre_meeting_updates")
+        .select("content")
+        .eq("position_id", currentPosition.id)
+        .eq("meeting_date", nextMeetingDate)
+        .maybeSingle()
+        .then((r) => r.data)
+    : null;
 
   const label = POSITION_LABELS[position as PositionName] ?? position;
   const editable = canEditSection(
@@ -70,6 +105,7 @@ export default async function BoardPositionPage({ params }: Props) {
         title={`${label} Dashboard`}
         subtitle={`Meeting minutes, to-dos, and notes for the ${label} position`}
       />
+
       <div className="grid gap-4 md:grid-cols-2">
         <SectionCard
           title="Meeting Minutes"
@@ -77,7 +113,8 @@ export default async function BoardPositionPage({ params }: Props) {
             <Button
               size="sm"
               variant="outline"
-              nativeButton={false} render={<Link href={`/board/${position}/minutes`} />}
+              nativeButton={false}
+              render={<Link href={`/board/${position}/minutes`} />}
             >
               View all
             </Button>
@@ -92,7 +129,8 @@ export default async function BoardPositionPage({ params }: Props) {
             <Button
               size="sm"
               variant="outline"
-              nativeButton={false} render={<Link href={`/board/${position}/todos`} />}
+              nativeButton={false}
+              render={<Link href={`/board/${position}/todos`} />}
             >
               View all
             </Button>
@@ -105,6 +143,20 @@ export default async function BoardPositionPage({ params }: Props) {
           />
         </SectionCard>
       </div>
+
+      {isOwnPage && (
+        <SectionCard
+          title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}
+          description="Submit your status update before the board meeting."
+        >
+          <PreMeetingForm
+            positionId={currentPosition.id}
+            selectedDate={nextMeetingDate}
+            upcomingMondays={meetingDates}
+            existingContent={existingUpdate?.content ?? undefined}
+          />
+        </SectionCard>
+      )}
     </div>
   );
 }

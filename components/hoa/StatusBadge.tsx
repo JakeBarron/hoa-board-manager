@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
  * All possible status values used across the app.
  * Architecture requests use: pending | approved | denied
  * CRA projects use: proposed | approved | in_progress | complete | on_hold
+ * Meetings use: pending | in_progress | adjourned
  */
 export type AppStatus =
   | "pending"
@@ -14,7 +15,8 @@ export type AppStatus =
   | "proposed"
   | "in_progress"
   | "complete"
-  | "on_hold";
+  | "on_hold"
+  | "adjourned";
 
 /** Maps each status to a Tailwind color class pair (background + text). */
 const STATUS_STYLES: Record<AppStatus, string> = {
@@ -25,6 +27,7 @@ const STATUS_STYLES: Record<AppStatus, string> = {
   in_progress: "bg-blue-100 text-blue-800 border-blue-200",
   complete: "bg-emerald-100 text-emerald-800 border-emerald-200",
   on_hold: "bg-orange-100 text-orange-800 border-orange-200",
+  adjourned: "bg-slate-100 text-slate-500 border-slate-200",
 };
 
 /** Human-readable labels for each status value. */
@@ -36,6 +39,7 @@ const STATUS_LABELS: Record<AppStatus, string> = {
   in_progress: "In Progress",
   complete: "Complete",
   on_hold: "On Hold",
+  adjourned: "Adjourned",
 };
 
 interface StatusBadgeProps {

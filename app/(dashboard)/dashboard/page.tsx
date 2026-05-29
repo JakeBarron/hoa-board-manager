@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
+import { formatMeetingDate } from "@/lib/dates";
 import type { ArchitectureRequest, CRAProject } from "@/types/database";
 
 export const metadata = {
@@ -19,8 +21,10 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Fetch summary counts in parallel
-  const [archResult, craResult] = await Promise.all([
+  const today = new Date().toISOString().split("T")[0];
+
+  // Fetch summary data in parallel
+  const [archResult, craResult, meetingResult] = await Promise.all([
     supabase
       .from("architecture_requests")
       .select("id, address, status, created_at")
@@ -33,10 +37,19 @@ export default async function DashboardPage() {
       .in("status", ["proposed", "approved", "in_progress"])
       .order("created_at", { ascending: false })
       .limit(5),
+    supabase
+      .from("meetings")
+      .select("meeting_date")
+      .gte("meeting_date", today)
+      .in("status", ["pending", "in_progress"])
+      .order("meeting_date", { ascending: true })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   const pendingRequests = (archResult.data ?? []) as Pick<ArchitectureRequest, "id" | "address" | "status" | "created_at">[];
   const activeProjects = (craResult.data ?? []) as Pick<CRAProject, "id" | "name" | "status">[];
+  const nextMeeting = meetingResult.data as { meeting_date: string } | null;
 
   return (
     <div className="space-y-6">
@@ -44,6 +57,28 @@ export default async function DashboardPage() {
         title="Dashboard"
         subtitle="Welcome to the HOA Board Management Portal"
       />
+
+      {/* Next meeting banner */}
+      <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-sm">
+        {nextMeeting ? (
+          <>
+            <span className="font-medium">Next meeting: </span>
+            <span>{formatMeetingDate(nextMeeting.meeting_date)}</span>
+            <span className="mx-2 text-muted-foreground">·</span>
+            <Link href="/agenda" className="text-primary hover:underline">
+              View agenda
+            </Link>
+          </>
+        ) : (
+          <>
+            <span className="text-muted-foreground">No meeting scheduled.</span>
+            <span className="mx-2 text-muted-foreground">·</span>
+            <Link href="/meetings" className="text-primary hover:underline">
+              View meetings
+            </Link>
+          </>
+        )}
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <SectionCard

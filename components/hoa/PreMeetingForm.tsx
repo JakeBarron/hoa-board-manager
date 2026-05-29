@@ -79,17 +79,23 @@ export function PreMeetingForm({
       <div className="space-y-1.5">
         <p className="text-sm font-medium">Meeting date</p>
         <div className="flex flex-wrap gap-2">
-          {upcomingMondays.map((date) => (
-            <Button
-              key={date}
-              type="button"
-              variant={date === selectedDate ? "default" : "outline"}
-              size="sm"
-              onClick={() => handleDateSelect(date)}
-            >
-              {formatMeetingDate(date)}
-            </Button>
-          ))}
+          {upcomingMondays.map((date) => {
+            const active = date === selectedDate;
+            return (
+              <button
+                key={date}
+                type="button"
+                onClick={() => handleDateSelect(date)}
+                className={`cursor-pointer rounded-full border px-3 py-1 text-sm transition-colors ${
+                  active
+                    ? "border-primary/40 bg-primary/8 text-primary font-medium"
+                    : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+                }`}
+              >
+                {formatMeetingDate(date)}
+              </button>
+            );
+          })}
         </div>
       </div>
 

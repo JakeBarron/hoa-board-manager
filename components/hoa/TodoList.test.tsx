@@ -15,6 +15,8 @@ const makeTodo = (overrides: Partial<Todo> = {}): Todo => ({
   position_id: "pos-1",
   title: "Send newsletter",
   completed: false,
+  due_date: null,
+  meeting_id: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
   ...overrides,

@@ -217,6 +217,8 @@ export type Database = {
           position_id: string;
           title: string;
           completed: boolean;
+          due_date: string | null;
+          meeting_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -225,12 +227,16 @@ export type Database = {
           position_id: string;
           title: string;
           completed?: boolean;
+          due_date?: string | null;
+          meeting_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           title?: string;
           completed?: boolean;
+          due_date?: string | null;
+          meeting_id?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -287,6 +293,7 @@ export type Database = {
           status: MeetingStatus;
           minutes_content: string | null;
           minutes_drive_url: string | null;
+          present_positions: string[];
           created_at: string;
         };
         Insert: {
@@ -300,9 +307,11 @@ export type Database = {
           status?: MeetingStatus;
           minutes_content?: string | null;
           minutes_drive_url?: string | null;
+          present_positions?: string[];
           created_at?: string;
         };
         Update: {
+          called_by?: string;
           seconded_by?: string | null;
           seconded_at?: string | null;
           started_at?: string | null;
@@ -310,6 +319,7 @@ export type Database = {
           status?: MeetingStatus;
           minutes_content?: string | null;
           minutes_drive_url?: string | null;
+          present_positions?: string[];
         };
         Relationships: [];
       };

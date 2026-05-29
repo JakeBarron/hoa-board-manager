@@ -68,3 +68,33 @@ export async function deleteTodo(todoId: string): Promise<void> {
   if (error) throw new Error(error.message);
   revalidatePath("/board", "layout");
 }
+
+/**
+ * Creates an action item (todo) assigned to a board position from a meeting.
+ * The meeting_id links the todo back to the meeting it was created in, enabling
+ * the meeting detail page to show action items created during that session.
+ *
+ * @param positionId - UUID of the position responsible for this action item
+ * @param title      - Text description of the action item
+ * @param meetingId  - UUID of the meeting during which this action item was created
+ * @param dueDate    - Optional ISO date string (YYYY-MM-DD) for when the item is due
+ */
+export async function createActionItem(
+  positionId: string,
+  title: string,
+  meetingId: string,
+  dueDate?: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("todos").insert({
+    position_id: positionId,
+    title,
+    meeting_id: meetingId,
+    ...(dueDate !== undefined ? { due_date: dueDate } : {}),
+  });
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/board", "layout");
+  revalidatePath("/meetings");
+}

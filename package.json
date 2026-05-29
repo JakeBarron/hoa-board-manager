@@ -1,7 +1,8 @@
 {
-  "name": "hoa-website",
+  "name": "hoa-board-manager",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@11.4.0",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

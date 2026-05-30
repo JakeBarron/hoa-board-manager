@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
-import { StatusBadge } from "@/components/hoa/StatusBadge";
 import { MeetingRunnerModal } from "@/components/hoa/MeetingRunnerModal";
-import { formatMeetingDate } from "@/lib/dates";
 import { startOrResumeMeeting } from "@/actions/meetings";
-import type { AppStatus } from "@/components/hoa/StatusBadge";
+import { MeetingRow } from "./MeetingRow";
 import type { Meeting } from "@/types/database";
 
 interface Position {
@@ -141,7 +139,7 @@ export function MeetingListClient({
           ) : (
             <ul className="divide-y divide-border">
               {upcoming.map((m) => (
-                <MeetingRow key={m.id} meeting={m} />
+                <MeetingRow key={m.id} meeting={m} canSchedule={canSchedule} />
               ))}
             </ul>
           )}
@@ -151,7 +149,7 @@ export function MeetingListClient({
           <SectionCard title="Past">
             <ul className="divide-y divide-border">
               {past.map((m) => (
-                <MeetingRow key={m.id} meeting={m} />
+                <MeetingRow key={m.id} meeting={m} canSchedule={false} />
               ))}
             </ul>
           </SectionCard>
@@ -170,30 +168,5 @@ export function MeetingListClient({
         />
       )}
     </>
-  );
-}
-
-/**
- * Single row in the meetings list, rendered as a link to /meetings/[id].
- *
- * @param meeting - Partial meeting row with id, meeting_date, and status
- */
-function MeetingRow({
-  meeting,
-}: {
-  meeting: Pick<Meeting, "id" | "meeting_date" | "status">;
-}) {
-  return (
-    <li>
-      <Link
-        href={`/meetings/${meeting.id}`}
-        className="flex items-center justify-between py-3 hover:bg-muted/40 transition-colors px-1 rounded"
-      >
-        <span className="text-sm font-medium">
-          {formatMeetingDate(meeting.meeting_date)}
-        </span>
-        <StatusBadge status={meeting.status as AppStatus} />
-      </Link>
-    </li>
   );
 }

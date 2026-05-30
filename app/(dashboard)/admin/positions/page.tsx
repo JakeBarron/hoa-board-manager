@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { isChair } from "@/lib/permissions";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import type { Position } from "@/types/database";
 
@@ -20,11 +21,13 @@ export default async function ManagePositionsPage() {
   // Verify president role before rendering
   const { data: positionData } = await supabase
     .from("positions")
-    .select("role")
+    .select("name, role")
     .eq("email", user.email!)
     .single();
 
-  if ((positionData as { role: string } | null)?.role !== "president") redirect("/dashboard");
+  if (!positionData) redirect("/login");
+  if (isChair(positionData.role)) redirect(`/committee/${positionData.name}`);
+  if (positionData.role !== "president") redirect("/dashboard");
 
   const { data: positions } = await supabase
     .from("positions")

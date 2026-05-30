@@ -3,7 +3,7 @@
 Live in-meeting tool: call to order, motions, voting, minutes, adjournment.
 
 ## Status
-Schema exists (migration 0005). No UI built yet.
+Complete. UI built at `/meetings/[id]`. Went with a non-realtime approach — secretary controls the entire flow (motions, votes, minutes) rather than each member interacting independently. Supabase Realtime was not used.
 
 ---
 

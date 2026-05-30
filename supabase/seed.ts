@@ -1,5 +1,6 @@
 /**
- * Seed script — creates the 7 fixed board position accounts in Supabase.
+ * Seed script — creates the 13 fixed position accounts in Supabase:
+ * 8 board members (president, officers, members) + 5 committee chairs.
  *
  * Run once after applying the initial migration:
  *   npx tsx supabase/seed.ts
@@ -36,7 +37,7 @@ const positions: Array<{
   password: string;
 }> = [
   // president — full access + admin
-  { name: "president",   role: "president", email: "president@yourhoa.com",   password: "ChangeMe123!" },
+  { name: "president",   role: "president", email: "president@yourhoa.com", password: "ChangeMe123!" },
   // officers — can read and edit any section
   { name: "vp",          role: "officer",   email: "vp@yourhoa.com",           password: "ChangeMe123!" },
   { name: "secretary",   role: "officer",   email: "secretary@yourhoa.com",    password: "ChangeMe123!" },
@@ -46,6 +47,12 @@ const positions: Array<{
   { name: "membership",  role: "member",    email: "membership@yourhoa.com",   password: "ChangeMe123!" },
   { name: "tennis",      role: "member",    email: "tennis@yourhoa.com",       password: "ChangeMe123!" },
   { name: "social",      role: "member",    email: "social@yourhoa.com",       password: "ChangeMe123!" },
+  // committee chairs — pre-meeting updates for their section only
+  { name: "web",          role: "chair",    email: "web@yourhoa.com",          password: "ChangeMe123!" },
+  { name: "architecture", role: "chair",    email: "architecture@yourhoa.com", password: "ChangeMe123!" },
+  { name: "welcoming",    role: "chair",    email: "welcoming@yourhoa.com",    password: "ChangeMe123!" },
+  { name: "clubhouse",    role: "chair",    email: "clubhouse@yourhoa.com",    password: "ChangeMe123!" },
+  { name: "cra",          role: "chair",    email: "cra@yourhoa.com",          password: "ChangeMe123!" },
 ];
 
 /**

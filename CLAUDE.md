@@ -232,6 +232,7 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - `/board/[position]/minutes/new` — Tiptap WYSIWYG → docx → Drive URL flow
 - `/pre-meeting` — officer/president aggregate view of all updates by date; members redirected to `/board/[position]`
 - `/agenda` — HOA meeting agenda (call to order → approve minutes → board reports → new business → adjourn); officer+ get mailto: reminder for missing submissions
+- `/meetings/[id]` — meeting runner (non-realtime, secretary-controlled): motions, voting, live minutes via Tiptap, `.docx` export, Drive URL storage; amendment form for post-adjournment corrections
 - `/admin/positions` — lists positions + emails (edit form not built — see `docs/specs/admin-positions-edit.md`)
 - `/admin/settings` — configurable settings with inline save; meeting cadence uses dropdown UI
 
@@ -242,7 +243,7 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - No `/cra/[id]` page yet
 
 ### Schema-ready, no UI
-- Meeting runner — `meetings`, `motions`, `motion_votes` tables all built; live meeting UI not started (see `docs/specs/meeting-runner.md`)
+- Motions/voting UI — `motions` and `motion_votes` tables exist; the meeting runner uses them but there is no dedicated motion-proposal or per-member voting UI (secretary records everything)
 
 ---
 
@@ -289,16 +290,28 @@ pnpm dev          # start dev server (run from /Users/jake/dev/hoa-board-manager
 pnpm build        # production build
 pnpm test         # run Jest (82 tests)
 pnpm type-check   # tsc --noEmit
-pnpm seed         # seed 8 position accounts (requires .env.local)
+pnpm seed         # seed 8 position accounts against .env.local (e2e project)
 pnpm lint         # ESLint
+```
+
+To seed the **production** Supabase project:
+```bash
+npx tsx --env-file=.env.prod supabase/seed.ts
 ```
 
 ---
 
 ## Environment Variables
 
+Three env files (none committed):
+
+| File | Points to | Used for |
+|---|---|---|
+| `.env.local` | E2E Supabase project | Local dev + pnpm seed |
+| `.env.prod` | Prod Supabase project | One-off prod scripts (e.g. seed) |
+
 ```bash
-# .env.local (never committed)
+# both files have the same keys:
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...   # legacy format (not sb_publishable_)
 SUPABASE_SERVICE_ROLE_KEY=eyJ...       # legacy format, server-side only
@@ -306,12 +319,26 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...       # legacy format, server-side only
 
 Use **legacy JWT keys** from Supabase Dashboard → Settings → API → "Legacy anon, service_role API keys" tab. The new `sb_publishable_` / `sb_secret_` format is not yet fully supported by `@supabase/supabase-js` v2.
 
+**Vercel environment scoping:**
+- `Production` env vars → prod Supabase project (live at `board.eastspringlake.com`)
+- `Preview` + `Development` env vars → e2e Supabase project (has seed data)
+
+Every branch PR auto-deploys against the e2e database. `main` deploys against prod.
+
 ---
 
-## CI/CD
+## CI/CD & Branch Workflow
 
-- GitHub Actions: `pnpm type-check && pnpm test --ci` on every push and PR to `main`
-- Branch protection: CI must pass + 1 review required before merge
-- CODEOWNERS: `@JakeBarron` — add co-developer here when they join
-- Vercel: auto-deploys `main`; preview deployments for PRs
-- Future: `board.eastspringlake.com` subdomain (CNAME to Vercel) + separate prod Supabase project
+**main is locked** — never push directly. All changes go through a branch + PR.
+
+Merge requirements:
+- CI must pass (`pnpm type-check && pnpm test --ci`)
+- 1 PR review required (CODEOWNERS: `@JakeBarron`)
+
+Vercel deploys:
+- `main` → production at `https://board.eastspringlake.com` (prod Supabase)
+- Any branch PR → preview URL (e2e Supabase)
+
+Supabase auth URL configuration (prod project → Authentication → URL Configuration):
+- Site URL: `https://board.eastspringlake.com`
+- Redirect URLs: `https://board.eastspringlake.com/*`

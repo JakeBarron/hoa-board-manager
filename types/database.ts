@@ -293,6 +293,7 @@ export type Database = {
           status: MeetingStatus;
           minutes_content: string | null;
           minutes_drive_url: string | null;
+          reminder_sent_at: string | null;
           present_positions: string[];
           created_at: string;
         };
@@ -319,6 +320,7 @@ export type Database = {
           status?: MeetingStatus;
           minutes_content?: string | null;
           minutes_drive_url?: string | null;
+          reminder_sent_at?: string | null;
           present_positions?: string[];
         };
         Relationships: [];
@@ -420,9 +422,14 @@ export type PositionName =
   | "pool"
   | "membership"
   | "tennis"
-  | "social";
+  | "social"
+  | "web"
+  | "architecture"
+  | "welcoming"
+  | "clubhouse"
+  | "cra";
 
-export type PositionRole = "president" | "officer" | "member";
+export type PositionRole = "president" | "officer" | "member" | "chair";
 
 export type ArchitectureStatus = "pending" | "approved" | "denied";
 

@@ -271,3 +271,22 @@ export async function addMeetingDocument(
   revalidatePath("/meetings");
   return { id: data.id };
 }
+
+/**
+ * Records that a pre-meeting reminder email was sent for the given meeting.
+ * Sets reminder_sent_at to now — used to show a warning on the agenda page
+ * so the secretary doesn't send the reminder multiple times.
+ *
+ * @param meetingId - UUID of the meeting for which the reminder was sent
+ */
+export async function recordReminderSent(meetingId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("meetings")
+    .update({ reminder_sent_at: new Date().toISOString() })
+    .eq("id", meetingId);
+
+  if (error) throw new Error(error.message);
+  revalidatePath("/agenda");
+}

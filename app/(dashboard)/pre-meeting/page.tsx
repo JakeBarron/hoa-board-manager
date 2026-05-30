@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { canEditAll } from "@/lib/permissions";
+import { canEditAll, isChair } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
@@ -36,6 +36,9 @@ export default async function PreMeetingPage({ searchParams }: Props) {
 
   if (!currentPosition) redirect("/login");
 
+  // Chairs redirect to their committee page
+  if (isChair(currentPosition.role)) redirect(`/committee/${currentPosition.name}`);
+
   // Members submit updates from their own position page — redirect them there
   if (!canEditAll(currentPosition.role)) {
     redirect(`/board/${currentPosition.name}`);
@@ -68,7 +71,10 @@ export default async function PreMeetingPage({ searchParams }: Props) {
       .select("position_id, content, submitted_at")
       .eq("meeting_date", selectedDate)
       .order("submitted_at"),
-    supabase.from("positions").select("id, name"),
+    supabase
+      .from("positions")
+      .select("id, name")
+      .in("role", ["president", "officer", "member"]),
   ]);
 
   const positions = positionsResult.data ?? [];

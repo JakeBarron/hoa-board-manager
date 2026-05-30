@@ -7,9 +7,11 @@
 
 ## Overview
 
-Add five non-voting committee chair accounts to the portal. Chairs can log in, submit pre-meeting updates for their section, and view the dashboard. Voting board members can read all chair sections; president, VP, and secretary can edit them. Chairs are locked out of all other routes.
+Add five non-voting committee chair accounts to the portal. Chairs can log in, submit pre-meeting updates for their section, and view the dashboard. Voting board members can read all chair sections; president, VP, and secretary can edit them. Chairs are locked out of all other routes via per-page guards.
 
 **Chairs:** Web, Architecture Review, Welcoming, Clubhouse, CRA
+
+A significant side-effect: the existing `/architecture` dashboard page and primary nav item are **removed**. All architecture request management (list, vote recording, and eventually new-request submission) moves to the architecture chair's `/committee/architecture` page. The public `/architecture/[id]` detail page (outside the dashboard group, homeowner-facing) is unaffected.
 
 ---
 
@@ -49,6 +51,8 @@ INSERT INTO positions (name, email, role) VALUES
 
 ### `types/database.ts` changes
 
+Chair names are added directly into the existing `PositionName` union — no separate type:
+
 ```ts
 export type PositionRole = "president" | "officer" | "member" | "chair";
 
@@ -57,6 +61,8 @@ export type PositionName =
   | "pool" | "membership" | "tennis" | "social"
   | "web" | "architecture" | "welcoming" | "clubhouse" | "cra";
 ```
+
+Every map keyed on `PositionName` (e.g. `POSITION_LABELS` in `reminder.ts` and `agenda/page.tsx`) must be updated with entries for the five new names.
 
 ### Seed (`supabase/seed.ts`)
 
@@ -76,14 +82,22 @@ export const isChair = (role: PositionRole): boolean => role === "chair";
 
 ---
 
-## Route Protection (`proxy.ts` / middleware)
+## Route Protection
 
-Chairs are redirected to `/committee/[their-name]` if they attempt to access any route outside of:
+The primary protection is the **sidebar**: chairs see only Dashboard and their own section link, so they're never presented with routes they can't use. The page-level guard is a backstop for manual URL entry only — consistent with the existing pattern where `pre-meeting/page.tsx` redirects members. No changes to `proxy.ts` or `lib/supabase/middleware.ts`.
+
+Each page that a chair should not access redirects them to `/committee/[their-name]`. The allowed routes for a chair are:
 
 - `/dashboard`
 - `/committee/[their own name]`
 
-All other routes (`/meetings`, `/architecture`, `/board/*`, `/pre-meeting`, `/agenda`, `/cra`, `/admin/*`, `/committee/[other chair]`) respond with a redirect. This is enforced in `lib/supabase/middleware.ts` alongside the existing auth redirect logic.
+All other dashboard routes (`/meetings`, `/board/*`, `/pre-meeting`, `/agenda`, `/cra`, `/admin/*`, `/committee/[other chair]`) redirect chairs. The removed `/architecture` route no longer exists to worry about.
+
+Implementation: add a role check near the top of each page's server component, after fetching the current position. Pattern:
+
+```ts
+if (isChair(currentPosition.role)) redirect(`/committee/${currentPosition.name}`);
+```
 
 ---
 
@@ -91,32 +105,53 @@ All other routes (`/meetings`, `/architecture`, `/board/*`, `/pre-meeting`, `/ag
 
 ### `/committee/[chair]/page.tsx`
 
-Server component. Fetches the current user's position and the target chair position. Access logic:
+Server component inside `app/(dashboard)/`. Inherits `DashboardLayout` (Sidebar + main layout). The Sidebar receives the position and branches based on role — chairs see a minimal nav, board members see the full nav with the Committee Chairs section.
+
+Fetch the current user's position and the target chair position. Access logic:
 
 - Chair viewing another chair's page → redirect to `/committee/[own name]`
-- All others → render page with appropriate edit flag
+- All others → render page with `canEdit` flag
 
 **All chair pages render:**
 - `PageHeader` — chair name + subtitle
 - Pre-meeting update widget — reuses `PreMeetingForm` with the same date-resolution logic as `/board/[position]` (scheduled meetings → cadence fallback → Mondays fallback)
+- When `canEdit` is false (member role viewing): form rendered in disabled/read-only state
 
 **Architecture chair page additionally renders:**
-- Architecture requests panel — list of `architecture_requests` rows with `StatusBadge` per item, each linking to `/architecture/[id]`
-- "Submit New Request" button linking to `/architecture/new` (currently stubbed — button present, form not yet built)
+- Architecture requests panel — full list of `architecture_requests` rows with `StatusBadge` per item, each linking to `/architecture/[id]` (public detail page)
+- President sees the inline `VoteForm` on pending items (same as the old `/architecture` page)
+- "Submit New Request" button — disabled/stubbed for now; will be built as a future widget on this page
 
 ### Chair labels & slugs
 
 ```ts
-const CHAIR_LABELS: Record<ChairName, string> = {
+const CHAIR_LABELS: Record<ChairPositionName, string> = {
   web:          "Web Committee",
   architecture: "Architecture Review",
   welcoming:    "Welcoming Committee",
   clubhouse:    "Clubhouse Committee",
   cra:          "CRA Committee",
 };
+
+// Convenience type — derived, not a new DB concept
+type ChairPositionName = "web" | "architecture" | "welcoming" | "clubhouse" | "cra";
 ```
 
-`ChairName` is a derived type: the five new `PositionName` values. Can be expressed as a type alias for clarity without adding a new concept to the DB.
+---
+
+## Removed: `/architecture` Dashboard Page
+
+The existing `app/(dashboard)/architecture/page.tsx` and `/architecture/new/page.tsx` are **deleted**. The primary nav item "Architecture" is removed from `Sidebar.tsx`.
+
+What moves to `/committee/architecture`:
+- Architecture requests list with `StatusBadge`
+- `VoteForm` inline on pending items (president only)
+- "Submit New Request" button (remains stubbed until the upload form is built)
+
+What stays unchanged:
+- `app/architecture/[id]/page.tsx` — public detail page, outside the dashboard group, no auth required
+- `actions/architecture.ts` (`recordVote`) — still used, now called from the committee page
+- RLS policies on `architecture_requests` — unchanged
 
 ---
 
@@ -124,15 +159,29 @@ const CHAIR_LABELS: Record<ChairName, string> = {
 
 **Board member view (role !== 'chair'):**
 
-Existing sections unchanged. Add a new "Committee Chairs" section below "Board Sections":
+"Architecture Requests" is removed from Primary Nav. A new "Committee Chairs" section is added below "Board Sections":
 
 ```
+Primary Nav
+  Dashboard
+  Meetings
+  CRA Projects
+  Pre-Meeting Update
+  Agenda
+
+Board Sections
+  President … Social (unchanged)
+
 Committee Chairs
   Web Committee          → /committee/web
   Architecture Review    → /committee/architecture
   Welcoming Committee    → /committee/welcoming
   Clubhouse Committee    → /committee/clubhouse
   CRA Committee          → /committee/cra
+
+Admin (president only)
+  Manage Positions
+  Settings
 ```
 
 **Chair view (role === 'chair'):**
@@ -144,13 +193,13 @@ Dashboard              → /dashboard
 [Their section label]  → /committee/[their name]
 ```
 
-The "Signed in as" footer label still shows their position name.
+The "Signed in as" footer shows the chair's position name (capitalized).
 
 ---
 
 ## Agenda Page (`app/(dashboard)/agenda/page.tsx`)
 
-Add a hardcoded `COMMITTEE_ORDER` and `COMMITTEE_LABELS` map parallel to the existing board ones. Fetch pre-meeting updates for all 13 positions (8 board + 5 chairs) in the existing `pre_meeting_updates` query — no table change needed.
+Add hardcoded `COMMITTEE_ORDER` and `COMMITTEE_LABELS` maps parallel to the existing board ones. The `pre_meeting_updates` query already fetches by `meeting_date` across all positions — no table change needed, but the query result will now include chair updates naturally.
 
 Agenda item numbering shifts:
 
@@ -163,27 +212,37 @@ Agenda item numbering shifts:
 | 5 | New Business |
 | 6 | Adjournment |
 
-The missing-submissions count, the "X of 13 updates submitted" label, and the `buildReminderMailto` call all expand to include all 13 positions. `buildReminderMailto` already accepts a flat email list — pass all 13 emails, no signature change needed.
+The hardcoded `"of 8 updates submitted"` becomes `"of 13 updates submitted"` (derived from the total position count, not a literal).
+
+### Reminder buttons (replacing single "Send Reminder")
+
+The "Send Reminder" section is replaced by up to three buttons, shown only to officers+, each only visible when the relevant group has missing submissions:
+
+- **Remind Board** — mailto: to voting board members who haven't submitted (existing logic, scoped to 8 positions)
+- **Remind Chairs** — mailto: to chairs who haven't submitted (links to each chair's `/committee/[name]` page, not `/pre-meeting`)
+- **Remind All** — single mailto: combining both lists
+
+`buildReminderMailto` in `lib/reminder.ts` already accepts a flat email list and a `missingPositions` array. The function is called up to three times (board-only, chairs-only, all) with the appropriate subsets. No signature change needed.
 
 ---
 
 ## Pre-Meeting Updates Page (`app/(dashboard)/pre-meeting/page.tsx`)
 
-Chairs are redirected away from this route (covered by middleware). No other changes needed — the aggregate officer/president view of board updates is unaffected. Committee updates are surfaced on the Agenda page instead.
+Add a chair redirect at the top (same pattern as other pages). The officer/president aggregate view of board updates is unaffected — the query filters by the 8 voting `PositionName` values or by role, so chair updates don't bleed in. Verify the query doesn't accidentally pick up chair position rows.
 
 ---
 
 ## What This Does NOT Include
 
-- No dedicated meeting runner integration for chairs (read-only presence, future scope)
-- No architecture upload form (remains stubbed at `/architecture/new`)
-- No per-chair todos or minutes (pre-meeting update is the only widget for non-architecture chairs at launch)
+- No dedicated meeting runner integration for chairs
+- No architecture upload form (button present on chair page, form not yet built)
+- No per-chair todos or minutes
 - No audit log of chair account reassignments
 
 ---
 
 ## Future Work (not in this spec)
 
-- **Pre-meeting / Agenda merge:** Fold the Pre-Meeting Updates page into the Agenda page so officers can browse updates and generate an agenda that feeds directly into the meeting runner. (See `docs/specs/README.md`)
-- **Chair-specific widgets:** Additional widgets per section beyond the pre-meeting update (e.g. clubhouse booking tracker, welcoming new-resident log)
-- **Architecture upload form:** Build `/architecture/new` so the architecture chair can submit requests with file attachments
+- **Architecture upload form:** Build the new-request form as a widget on `/committee/architecture`
+- **Pre-meeting / Agenda merge:** Fold the Pre-Meeting Updates page into the Agenda page; agenda feeds the meeting runner
+- **Chair-specific widgets:** Additional widgets per section (clubhouse booking tracker, welcoming new-resident log, etc.)

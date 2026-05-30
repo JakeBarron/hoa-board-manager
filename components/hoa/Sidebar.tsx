@@ -75,7 +75,7 @@ export function Sidebar({ position }: SidebarProps) {
         </ul>
       </nav>
 
-      <nav aria-label="Function navigation" className="mt-4">
+      <nav aria-label="Function navigation">
         <ul className="space-y-0.5">
           {FUNCTION_NAV.map((item) => (
             <SidebarLink key={item.href} item={item} active={isActive(item.href)} />

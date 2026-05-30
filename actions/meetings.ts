@@ -144,23 +144,80 @@ export async function updateAttendance(
 }
 
 /**
- * Hard-deletes the meeting and all related records (motions, votes, documents,
- * action items). Used for cancel flow. On-delete-cascade in the DB handles
- * child record cleanup automatically.
+ * Hard-deletes a meeting and all related records (motions, votes, documents,
+ * action items). Only meetings in 'pending' status can be cancelled — meetings
+ * that are in_progress or adjourned are rejected. On-delete-cascade in the DB
+ * handles child record cleanup automatically.
  *
  * @param meetingId - UUID of the meeting to permanently delete
+ * @throws If the meeting does not exist or is not in 'pending' status
  */
 export async function cancelMeeting(meetingId: string): Promise<void> {
   const supabase = await createClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("meetings")
     .delete()
-    .eq("id", meetingId);
+    .eq("id", meetingId)
+    .eq("status", "pending" satisfies MeetingStatus)
+    .select("id");
 
   if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Meeting is not in a cancellable state");
+
   revalidatePath("/meetings");
   revalidatePath("/dashboard");
+}
+
+/**
+ * Moves a pending meeting to a new date. Validates that:
+ * 1. `newDate` is a parseable date string in YYYY-MM-DD format
+ * 2. `newDate` is strictly in the future (not today or earlier)
+ * 3. No other pending or in_progress meeting is already scheduled on `newDate`
+ * 4. The meeting being rescheduled is still in 'pending' status (race condition guard)
+ *
+ * Revalidates /meetings, /pre-meeting, and /agenda after a successful update.
+ *
+ * @param meetingId - UUID of the meeting to reschedule
+ * @param newDate   - New ISO date string (YYYY-MM-DD) for the meeting
+ * @throws If validation fails, a conflict exists, or the meeting is no longer pending
+ */
+export async function rescheduleMeeting(
+  meetingId: string,
+  newDate: string
+): Promise<void> {
+  const parsed = new Date(newDate + "T00:00:00");
+  if (isNaN(parsed.getTime())) throw new Error("Invalid date");
+
+  const today = new Date().toISOString().split("T")[0];
+  if (newDate <= today) throw new Error("Date must be in the future");
+
+  const supabase = await createClient();
+
+  const { data: conflict, error: conflictError } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("meeting_date", newDate)
+    .in("status", ["pending", "in_progress"] as MeetingStatus[])
+    .neq("id", meetingId)
+    .maybeSingle();
+
+  if (conflictError) throw new Error(conflictError.message);
+  if (conflict) throw new Error("A meeting is already scheduled for that date");
+
+  const { data, error } = await supabase
+    .from("meetings")
+    .update({ meeting_date: newDate })
+    .eq("id", meetingId)
+    .eq("status", "pending" satisfies MeetingStatus)
+    .select("id");
+
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error("Meeting is not in a reschedulable state");
+
+  revalidatePath("/meetings");
+  revalidatePath("/pre-meeting");
+  revalidatePath("/agenda");
 }
 
 /**

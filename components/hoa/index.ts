@@ -13,3 +13,5 @@ export { MeetingRunnerModal } from "./MeetingRunnerModal";
 export type { MeetingRunnerModalProps } from "./MeetingRunnerModal";
 export { InlineConfirm } from "./InlineConfirm";
 export type { InlineConfirmProps } from "./InlineConfirm";
+export { InlineDateInput } from "./InlineDateInput";
+export type { InlineDateInputProps } from "./InlineDateInput";

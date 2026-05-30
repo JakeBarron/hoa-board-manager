@@ -4,12 +4,14 @@ import {
   isAdmin,
   canEditCRA,
   canRecordVote,
+  isChair,
 } from "./permissions";
 
 describe("canEditAll", () => {
   it("returns true for president", () => expect(canEditAll("president")).toBe(true));
   it("returns true for officer", () => expect(canEditAll("officer")).toBe(true));
   it("returns false for member", () => expect(canEditAll("member")).toBe(false));
+  it("returns false for chair", () => expect(canEditAll("chair")).toBe(false));
 });
 
 describe("canEditSection", () => {
@@ -37,6 +39,7 @@ describe("isAdmin", () => {
     expect(isAdmin("officer")).toBe(false);
     expect(isAdmin("member")).toBe(false);
   });
+  it("returns false for chair", () => expect(isAdmin("chair")).toBe(false));
 });
 
 describe("canEditCRA", () => {
@@ -48,6 +51,8 @@ describe("canEditCRA", () => {
   it("prevents members from editing CRA", () => {
     expect(canEditCRA("member")).toBe(false);
   });
+
+  it("prevents chairs from editing CRA", () => expect(canEditCRA("chair")).toBe(false));
 });
 
 describe("canRecordVote", () => {
@@ -56,4 +61,12 @@ describe("canRecordVote", () => {
     expect(canRecordVote("officer")).toBe(false);
     expect(canRecordVote("member")).toBe(false);
   });
+  it("returns false for chair", () => expect(canRecordVote("chair")).toBe(false));
+});
+
+describe("isChair", () => {
+  it("returns true for chair role", () => expect(isChair("chair")).toBe(true));
+  it("returns false for president", () => expect(isChair("president")).toBe(false));
+  it("returns false for officer", () => expect(isChair("officer")).toBe(false));
+  it("returns false for member", () => expect(isChair("member")).toBe(false));
 });

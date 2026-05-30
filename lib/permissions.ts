@@ -56,3 +56,11 @@ export const canEditCRA = (role: PositionRole): boolean =>
  */
 export const canRecordVote = (role: PositionRole): boolean =>
   role === "president";
+
+/**
+ * Returns true if the role is a non-voting committee chair.
+ * Chairs can only edit their own section and cannot access most board routes.
+ *
+ * @param role - The current user's position role
+ */
+export const isChair = (role: PositionRole): boolean => role === "chair";

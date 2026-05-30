@@ -147,7 +147,7 @@ export default async function CommitteePage({ params }: Props) {
         <SectionCard
           title="Architecture Requests"
           headerAction={
-            <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/architecture/new" />}>
+            <Button size="sm" variant="outline" disabled>
               Submit New Request
             </Button>
           }

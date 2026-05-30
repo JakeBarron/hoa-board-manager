@@ -29,6 +29,7 @@ const POSITION_LABELS: Record<BoardPositionName, string> = {
 
 interface Props {
   params: Promise<{ position: string }>;
+  searchParams: Promise<{ date?: string }>;
 }
 
 /**
@@ -36,8 +37,9 @@ interface Props {
  * Shows recent todos, a minutes preview, and — when viewing your own page —
  * the pre-meeting update form for the next scheduled meeting.
  */
-export default async function BoardPositionPage({ params }: Props) {
+export default async function BoardPositionPage({ params, searchParams }: Props) {
   const { position } = await params;
+  const { date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -90,7 +92,9 @@ export default async function BoardPositionPage({ params }: Props) {
   );
   const meetingDates =
     scheduledDates.length > 0 ? scheduledDates : getUpcomingMeetingDates(cadence, 3);
-  const nextMeetingDate = meetingDates[0];
+  const nextMeetingDate = (dateParam && meetingDates.includes(dateParam))
+    ? dateParam
+    : meetingDates[0];
 
   // Fetch existing pre-meeting update only when on own page
   const existingUpdate = isOwnPage
@@ -165,6 +169,7 @@ export default async function BoardPositionPage({ params }: Props) {
             selectedDate={nextMeetingDate}
             upcomingMondays={meetingDates}
             existingContent={existingUpdate?.content ?? undefined}
+            returnPath={`/board/${position}`}
           />
         </SectionCard>
       )}

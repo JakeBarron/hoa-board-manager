@@ -18,7 +18,7 @@ Internal board management portal for an HOA. Also a portfolio project for Jake (
 | Backend | Supabase — Postgres DB + Auth + Storage |
 | Hosting | Vercel |
 | Package manager | pnpm |
-| Testing | Jest + React Testing Library (82 tests, all passing) |
+| Testing | Jest + React Testing Library (128 tests, all passing) |
 | Forms | react-hook-form + zod |
 
 ---
@@ -101,17 +101,19 @@ app/
   (auth)/login/              — login page + LoginForm client component
   (dashboard)/               — all authenticated pages share DashboardLayout
     layout.tsx               — fetches position from DB, renders Sidebar, guards auth
-    dashboard/               — pending arch requests + active CRA projects summary
+    dashboard/               — Home: board-wide summary (arch requests + active CRA)
     meetings/                — board meeting list (upcoming + past, status badges)
     meetings/new/            — schedule a meeting — officer+ only
     architecture/            — architecture requests list with status badges + president vote form
-    architecture/new/        — upload form (STUB — see docs/specs/architecture-upload.md)
-    board/[position]/        — position dashboard: todos, minutes preview, pre-meeting form
+    board/[position]/        — My Office for board members: todos, minutes preview, pre-meeting form
     board/[position]/minutes/     — minutes list with Drive links + export
     board/[position]/minutes/new/ — WYSIWYG editor → docx export → Drive URL
     board/[position]/todos/       — full todo list (add / toggle / delete)
-    pre-meeting/             — officer/president view of ALL submitted updates (members redirect to own position page)
+    committee/[chair]/       — My Office for committee chairs: pre-meeting form + role-specific content
+    pre-meeting/             — officer/president aggregate view of all updates (members + chairs redirect to own page)
     agenda/                  — auto-generated HOA agenda from pre-meeting updates + mailto: reminders
+    amenities/               — Pool, Clubhouse, Tennis (STUB — placeholder)
+    map/                     — Interactive neighborhood map (STUB — placeholder)
     admin/positions/         — president-only: lists positions + emails (edit form not yet built)
     admin/settings/          — president-only: configurable settings (quorum, HOA name, meeting cadence)
   architecture/[id]/         — PUBLIC detail page (outside dashboard — no auth required)
@@ -134,18 +136,18 @@ components/
     StatusBadge          — color-coded pill for AppStatus values
     FormField            — label + input + error message wrapper (requires htmlFor)
     EmptyState           — "nothing here yet" placeholder
-    Sidebar              — authenticated nav sidebar (admin section president-only)
+    Sidebar              — authenticated nav sidebar; function-first nav, chair-aware (admin section president-only)
     TodoList             — interactive add/toggle/delete with permission gate (client)
     RichTextEditor       — Tiptap StarterKit WYSIWYG (bold, italic, H2/H3, lists, blockquote)
     MinutesForm          — write minutes → save → export docx → paste Drive URL (client)
-    PreMeetingForm       — date quick-select + textarea, upserts on submit (client)
+    PreMeetingForm       — date quick-select + textarea, upserts on submit; accepts returnPath prop for date-change navigation (client)
     VoteForm             — inline collapsed/expanded vote form for president (client)
     MeetingScheduleForm  — date picker to schedule a meeting (client)
     SettingRow           — generic editable setting row with inline save feedback (client)
     MeetingCadenceRow    — week-of-month + day-of-week dropdowns for meeting cadence (client)
 
 lib/
-  permissions.ts   — pure ACL: canEditAll, canEditSection, isAdmin, canEditCRA, canRecordVote
+  permissions.ts   — pure ACL: canEditAll, canEditSection, isAdmin, canEditCRA, canRecordVote, isChair
   dates.ts         — getUpcomingMondays, getUpcomingMeetingDates, parseCadence,
                      describeCadence, formatMeetingDate
   reminder.ts      — buildReminderMailto (pure; pre-filled mailto: URL for missing submissions)
@@ -170,20 +172,25 @@ supabase/
     0004_settings         — settings table (quorum_required, hoa_name, meeting_cadence)
     0005_meeting_schema   — meetings, motions, motion_votes, meeting_documents
     0006_update_settings  — removes board_size, adds meeting_cadence
-  seed.ts          — creates 8 position accounts (run: pnpm seed)
+    0009_committee_chairs — extends role/name constraints, adds reminder_sent_at to meetings, inserts 5 chair rows
+    0010_reminder_rls     — UPDATE policy so officers can write reminder_sent_at
+  seed.ts          — creates 13 position accounts (8 board + 5 committee chairs) (run: pnpm seed)
 ```
 
 ---
 
 ## Auth & Permissions
 
-**Position-based accounts** — 8 fixed accounts, one per board position. No self-registration.
+**Position-based accounts** — 13 fixed accounts (8 board + 5 committee chairs). No self-registration.
 
 | Role | Who | What they can do |
 |---|---|---|
 | `president` | President | Full access + admin (manage positions, change settings, record votes) |
 | `officer` | VP, Secretary | Read all + edit any section |
 | `member` | Treasurer, Pool, Membership, Tennis, Social | Read all + edit own section only |
+| `chair` | Web, Architecture, Welcoming, Clubhouse, CRA | Access `/dashboard` and `/committee/[their-name]` only |
+
+**Chair routing:** Every restricted dashboard page has a per-page guard — `if (isChair(role)) redirect('/committee/${name}')`. The Sidebar also renders a minimal nav (Home + My Office) for chairs. ⚠️ Permission audit pending — some pages may be missing the chair redirect guard (known: `/cra/new` accessible to chairs via direct URL).
 
 Permission checks live in `lib/permissions.ts`. RLS policies enforce the same rules at the DB layer.
 
@@ -197,7 +204,7 @@ All tables in Supabase public schema with RLS enabled.
 
 | Table(s) | Purpose |
 |---|---|
-| `positions` | 8 rows — position name → email → role |
+| `positions` | 13 rows (8 board + 5 chairs) — position name → email → role |
 | `architecture_requests`, `architecture_documents` | Homeowner requests; public read via anon RLS |
 | `cra_projects`, `cra_quotes`, `cra_updates`, `cra_documents` | Capital projects tracker |
 | `meeting_minutes`, `todos`, `pre_meeting_updates` | Per-position board content |
@@ -222,22 +229,24 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 
 ### Fully functional
 - Login / logout (Supabase Auth) + route protection
-- Dashboard summary (pending arch requests + active CRA)
+- `/dashboard` (Home) — board-wide summary: pending arch requests + active CRA projects
 - `/meetings` — list with status badges; officer+ can schedule via `/meetings/new`
-- `/architecture` — list with StatusBadge, date, address; president sees inline VoteForm on pending items
+- `/architecture` — full requests list with StatusBadge; president sees inline VoteForm on pending items
 - `/architecture/[id]` — public detail page (outside dashboard group, no auth)
-- `/board/[position]` — todos preview + pre-meeting form (own page only) + minutes card
+- `/board/[position]` — My Office for board members: todos preview + pre-meeting form + minutes card
 - `/board/[position]/todos` — full CRUD, permission-gated
 - `/board/[position]/minutes` — list with Drive links + per-row docx export
 - `/board/[position]/minutes/new` — Tiptap WYSIWYG → docx → Drive URL flow
-- `/pre-meeting` — officer/president aggregate view of all updates by date; members redirected to `/board/[position]`
-- `/agenda` — HOA meeting agenda (call to order → approve minutes → board reports → new business → adjourn); officer+ get mailto: reminder for missing submissions
+- `/committee/[chair]` — My Office for committee chairs: pre-meeting form; architecture chair also sees requests list
+- `/pre-meeting` — officer/president aggregate view of all updates by date; members + chairs redirected to own page
+- `/agenda` — HOA meeting agenda (call to order → approve minutes → board reports → committee reports → new business → adjourn); officer+ get mailto: reminder for missing submissions
 - `/meetings/[id]` — meeting runner (non-realtime, secretary-controlled): motions, voting, live minutes via Tiptap, `.docx` export, Drive URL storage; amendment form for post-adjournment corrections
 - `/admin/positions` — lists positions + emails (edit form not built — see `docs/specs/admin-positions-edit.md`)
 - `/admin/settings` — configurable settings with inline save; meeting cadence uses dropdown UI
 
 ### Stubbed (page exists, placeholder only)
-- `/architecture/new` — file upload form (see `docs/specs/architecture-upload.md`)
+- `/amenities` — Pool, Clubhouse, Tennis (widgets not yet built)
+- `/map` — Interactive neighborhood map (SVG + property data not yet built)
 - `/cra` — EmptyState (see `docs/specs/cra-projects.md`)
 - `/cra/new` — placeholder
 - No `/cra/[id]` page yet
@@ -288,9 +297,9 @@ Pages that show date pickers should:
 ```bash
 pnpm dev          # start dev server (run from /Users/jake/dev/hoa-board-manager)
 pnpm build        # production build
-pnpm test         # run Jest (82 tests)
+pnpm test         # run Jest (128 tests)
 pnpm type-check   # tsc --noEmit
-pnpm seed         # seed 8 position accounts against .env.local (e2e project)
+pnpm seed         # seed 13 position accounts against .env.local (e2e project)
 pnpm lint         # ESLint
 ```
 

@@ -27,6 +27,8 @@ interface PreMeetingFormProps {
    * existing content so we can show the success/edit view immediately.
    */
   existingContent?: string;
+  /** Route to navigate to on date change. Defaults to /pre-meeting (for officers/president). */
+  returnPath?: string;
 }
 
 /**
@@ -46,6 +48,7 @@ export function PreMeetingForm({
   selectedDate,
   upcomingMondays,
   existingContent,
+  returnPath,
 }: PreMeetingFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -64,7 +67,7 @@ export function PreMeetingForm({
   });
 
   const handleDateSelect = (date: string) => {
-    router.push(`/pre-meeting?date=${date}`);
+    router.push(`${returnPath ?? "/pre-meeting"}?date=${date}`);
   };
 
   const onSubmit = (values: FormValues) => {

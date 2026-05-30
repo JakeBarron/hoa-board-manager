@@ -6,8 +6,10 @@ jest.mock("@/actions/pre-meeting", () => ({
   submitPreMeetingUpdate: jest.fn().mockResolvedValue(undefined),
 }));
 
+import { useRouter } from "next/navigation";
+
 jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn() }),
+  useRouter: jest.fn(),
 }));
 
 jest.mock("@/lib/dates", () => ({
@@ -90,6 +92,46 @@ describe("PreMeetingForm", () => {
       await userEvent.click(screen.getByRole("button", { name: "Edit update" }));
       expect(screen.getByRole("textbox")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
+    });
+  });
+
+  describe("date selector navigation", () => {
+    it("pushes to returnPath with date when a different date is selected", async () => {
+      const push = jest.fn();
+      (useRouter as jest.Mock).mockReturnValue({ push });
+
+      render(
+        <PreMeetingForm
+          positionId="pos-1"
+          selectedDate="2026-06-02"
+          upcomingMondays={["2026-06-02", "2026-06-09", "2026-06-16"]}
+          returnPath="/board/pool"
+        />
+      );
+
+      // formatMeetingDate is mocked to return "Meeting: <date>"
+      const dateButton = screen.getByRole("button", { name: "Meeting: 2026-06-09" });
+      await userEvent.click(dateButton);
+
+      expect(push).toHaveBeenCalledWith("/board/pool?date=2026-06-09");
+    });
+
+    it("defaults returnPath to /pre-meeting when not provided", async () => {
+      const push = jest.fn();
+      (useRouter as jest.Mock).mockReturnValue({ push });
+
+      render(
+        <PreMeetingForm
+          positionId="pos-1"
+          selectedDate="2026-06-02"
+          upcomingMondays={["2026-06-02", "2026-06-09"]}
+        />
+      );
+
+      const dateButton = screen.getByRole("button", { name: "Meeting: 2026-06-09" });
+      await userEvent.click(dateButton);
+
+      expect(push).toHaveBeenCalledWith("/pre-meeting?date=2026-06-09");
     });
   });
 });

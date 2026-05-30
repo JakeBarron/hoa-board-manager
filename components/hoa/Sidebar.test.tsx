@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { Sidebar } from "./Sidebar";
 import type { Position } from "@/types/database";
 
@@ -15,63 +15,90 @@ const makePosition = (overrides: Partial<Position>): Position => ({
 });
 
 describe("Sidebar — board member view", () => {
-  it("shows Committee Chairs section for president", () => {
-    render(<Sidebar position={makePosition({ role: "president" })} />);
-    expect(screen.getByText("Committee Chairs")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Architecture Review" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Web Committee" })).toBeInTheDocument();
-  });
-
-  it("shows Committee Chairs section for officer", () => {
-    render(<Sidebar position={makePosition({ name: "vp", role: "officer" })} />);
-    expect(screen.getByText("Committee Chairs")).toBeInTheDocument();
-  });
-
-  it("shows Committee Chairs section for member", () => {
+  it("shows My Office link pointing to /board/[name] for a member", () => {
     render(<Sidebar position={makePosition({ name: "pool", role: "member" })} />);
-    expect(screen.getByText("Committee Chairs")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "My Office" })).toHaveAttribute("href", "/board/pool");
+  });
+
+  it("shows My Office link pointing to /board/president for president", () => {
+    render(<Sidebar position={makePosition({ name: "president", role: "president" })} />);
+    expect(screen.getByRole("link", { name: "My Office" })).toHaveAttribute("href", "/board/president");
+  });
+
+  it("shows all function nav items", () => {
+    render(<Sidebar position={makePosition({ role: "president" })} />);
+    expect(screen.getByRole("link", { name: "Meetings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Architecture" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "CRA Projects" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Agenda" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Amenities" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Interactive Map" })).toBeInTheDocument();
+  });
+
+  it("does not show Board Sections group or individual position links", () => {
+    render(<Sidebar position={makePosition({ role: "president" })} />);
+    expect(screen.queryByText("Board Sections")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Secretary" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Pool" })).not.toBeInTheDocument();
+  });
+
+  it("does not show Committee Chairs group or individual chair links", () => {
+    render(<Sidebar position={makePosition({ role: "president" })} />);
+    expect(screen.queryByText("Committee Chairs")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Web Committee" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Architecture Review" })).not.toBeInTheDocument();
+  });
+
+  it("does not show Pre-Meeting Update link", () => {
+    render(<Sidebar position={makePosition({ role: "president" })} />);
+    expect(screen.queryByRole("link", { name: "Pre-Meeting Update" })).not.toBeInTheDocument();
   });
 
   it("shows Admin section only for president", () => {
     render(<Sidebar position={makePosition({ role: "president" })} />);
     expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Manage Positions" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("hides Admin section for officer", () => {
     render(<Sidebar position={makePosition({ name: "vp", role: "officer" })} />);
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
   });
+
+  it("hides Admin section for member", () => {
+    render(<Sidebar position={makePosition({ name: "pool", role: "member" })} />);
+    expect(screen.queryByText("Admin")).not.toBeInTheDocument();
+  });
 });
 
 describe("Sidebar — chair view", () => {
-  it("shows only Dashboard and own section link", () => {
+  it("shows only Dashboard and My Office in the primary nav", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
-    expect(screen.getByRole("link", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Web Committee" })).toBeInTheDocument();
+    const primaryNav = screen.getByRole("navigation", { name: "Primary navigation" });
+    const links = within(primaryNav).getAllByRole("link");
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveTextContent("Home");
+    expect(links[1]).toHaveTextContent("My Office");
   });
 
-  it("hides primary nav items from chairs", () => {
+  it("My Office link points to /committee/[name] for chairs", () => {
+    render(<Sidebar position={makePosition({ name: "architecture", role: "chair" })} />);
+    expect(screen.getByRole("link", { name: "My Office" })).toHaveAttribute(
+      "href",
+      "/committee/architecture"
+    );
+  });
+
+  it("hides function nav items from chairs", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
     expect(screen.queryByRole("link", { name: "Meetings" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Agenda" })).not.toBeInTheDocument();
-  });
-
-  it("hides Board Sections from chairs", () => {
-    render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
-    expect(screen.queryByText("Board Sections")).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "President" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Amenities" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Interactive Map" })).not.toBeInTheDocument();
   });
 
   it("hides Admin section from chairs", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
-  });
-
-  it("shows the correct section link for architecture chair", () => {
-    render(<Sidebar position={makePosition({ name: "architecture", role: "chair" })} />);
-    expect(screen.getByRole("link", { name: "Architecture Review" })).toHaveAttribute(
-      "href",
-      "/committee/architecture"
-    );
   });
 });

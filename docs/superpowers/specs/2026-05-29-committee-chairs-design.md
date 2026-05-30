@@ -64,6 +64,10 @@ export type PositionName =
 
 Every map keyed on `PositionName` (e.g. `POSITION_LABELS` in `reminder.ts` and `agenda/page.tsx`) must be updated with entries for the five new names.
 
+### `types/database.ts` — `meetings` table update
+
+Add `reminder_sent_at: string | null` to `meetings.Row` and `meetings.Update`.
+
 ### Seed (`supabase/seed.ts`)
 
 Add five new accounts following the same pattern as the existing eight.
@@ -223,6 +227,18 @@ The "Send Reminder" section is replaced by up to three buttons, shown only to of
 - **Remind All** — single mailto: combining both lists
 
 `buildReminderMailto` in `lib/reminder.ts` already accepts a flat email list and a `missingPositions` array. The function is called up to three times (board-only, chairs-only, all) with the appropriate subsets. No signature change needed.
+
+### Reminder sent tracking
+
+When any reminder button is clicked, a server action `recordReminderSent(meetingId)` writes the current timestamp to `meetings.reminder_sent_at`. The agenda page reads this field and shows a warning above the buttons if non-null:
+
+> "A reminder was last sent on [formatted date and time]."
+
+Buttons remain enabled — the warning is informational only, so the secretary can re-send if needed.
+
+**Caveat:** tracking only applies when a real meeting is scheduled (a `meetings` row exists). When the agenda is showing the "next Monday" placeholder with no scheduled meeting, there is no row to update and no warning is shown.
+
+`reminder_sent_at TIMESTAMPTZ` is added to the `meetings` table in migration `0007_committee_chairs`. The server action lives in `actions/meetings.ts` alongside the existing `createMeeting`.
 
 ---
 

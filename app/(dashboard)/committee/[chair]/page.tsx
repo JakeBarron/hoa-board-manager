@@ -24,6 +24,7 @@ const CHAIR_NAMES = new Set<string>(["web", "architecture", "welcoming", "clubho
 
 interface Props {
   params: Promise<{ chair: string }>;
+  searchParams: Promise<{ date?: string }>;
 }
 
 /**
@@ -37,8 +38,9 @@ interface Props {
  *   - Voting member: read-only
  *   - Chair on another chair's page: redirect to own page
  */
-export default async function CommitteePage({ params }: Props) {
+export default async function CommitteePage({ params, searchParams }: Props) {
   const { chair } = await params;
+  const { date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -99,7 +101,9 @@ export default async function CommitteePage({ params }: Props) {
   );
   const meetingDates =
     scheduledDates.length > 0 ? scheduledDates : getUpcomingMeetingDates(cadence, 3);
-  const nextMeetingDate = meetingDates[0];
+  const nextMeetingDate = (dateParam && meetingDates.includes(dateParam))
+    ? dateParam
+    : meetingDates[0];
 
   const existingUpdate = canEdit
     ? await supabase
@@ -131,6 +135,7 @@ export default async function CommitteePage({ params }: Props) {
             selectedDate={nextMeetingDate}
             upcomingMondays={meetingDates}
             existingContent={existingUpdate?.content ?? undefined}
+            returnPath={`/committee/${chair}`}
           />
         </SectionCard>
       )}

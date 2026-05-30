@@ -9,7 +9,6 @@ import { InlineDateInput } from "@/components/hoa/InlineDateInput";
 import { cancelMeeting, rescheduleMeeting } from "@/actions/meetings";
 import { formatMeetingDate } from "@/lib/dates";
 import type { Meeting } from "@/types/database";
-import type { AppStatus } from "@/components/hoa/StatusBadge";
 
 type RowMode = "default" | "confirmCancel" | "reschedule";
 
@@ -39,6 +38,7 @@ export function MeetingRow({ meeting, canSchedule }: MeetingRowProps) {
     startTransition(async () => {
       try {
         await cancelMeeting(meeting.id);
+        setMode("default");
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to cancel meeting.");
         setMode("default");
@@ -68,7 +68,7 @@ export function MeetingRow({ meeting, canSchedule }: MeetingRowProps) {
           {formatMeetingDate(meeting.meeting_date)}
         </Link>
         <div className="flex items-center gap-3">
-          <StatusBadge status={meeting.status as AppStatus} />
+          <StatusBadge status={meeting.status} />
           {showActions && mode === "default" && (
             <>
               <Button

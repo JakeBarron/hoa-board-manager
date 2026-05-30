@@ -78,7 +78,7 @@ describe("Sidebar — chair view", () => {
     const primaryNav = screen.getByRole("navigation", { name: "Primary navigation" });
     const links = within(primaryNav).getAllByRole("link");
     expect(links).toHaveLength(2);
-    expect(links[0]).toHaveTextContent("Dashboard");
+    expect(links[0]).toHaveTextContent("Home");
     expect(links[1]).toHaveTextContent("My Office");
   });
 

@@ -55,7 +55,7 @@ export function Sidebar({ position }: SidebarProps) {
         <SidebarBrand />
         <nav aria-label="Primary navigation">
           <ul className="space-y-0.5">
-            <SidebarLink item={{ label: "Dashboard", href: "/dashboard" }} active={isActive("/dashboard")} />
+            <SidebarLink item={{ label: "Home", href: "/dashboard" }} active={isActive("/dashboard")} />
             <SidebarLink item={{ label: "My Office", href: myOfficeHref }} active={isActive(myOfficeHref)} />
           </ul>
         </nav>
@@ -70,7 +70,7 @@ export function Sidebar({ position }: SidebarProps) {
 
       <nav aria-label="Primary navigation">
         <ul className="space-y-0.5">
-          <SidebarLink item={{ label: "Dashboard", href: "/dashboard" }} active={isActive("/dashboard")} />
+          <SidebarLink item={{ label: "Home", href: "/dashboard" }} active={isActive("/dashboard")} />
           <SidebarLink item={{ label: "My Office", href: myOfficeHref }} active={isActive(myOfficeHref)} />
         </ul>
       </nav>

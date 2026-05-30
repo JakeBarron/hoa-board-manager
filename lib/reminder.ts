@@ -10,6 +10,11 @@ const POSITION_LABELS: Record<PositionName, string> = {
   membership: "Membership",
   tennis: "Tennis",
   social: "Social",
+  web: "Web Committee",
+  architecture: "Architecture Review",
+  welcoming: "Welcoming Committee",
+  clubhouse: "Clubhouse Committee",
+  cra: "CRA Committee",
 };
 
 interface ReminderParams {
@@ -17,17 +22,20 @@ interface ReminderParams {
   boardEmails: string[];
   missingPositions: PositionName[];
   appUrl: string;
+  /** Overrides the default /pre-meeting?date=... link in the email body. */
+  updateUrl?: string;
 }
 
 /**
  * Builds a pre-filled mailto: URL for a board meeting reminder email.
- * Opens the user's email client with all board members in To:, the meeting
+ * Opens the user's email client with the given recipients in To:, the meeting
  * date in the subject, and a link to the pre-meeting update form in the body.
  *
  * @param meetingDate      - ISO date string (YYYY-MM-DD)
  * @param boardEmails      - Email addresses for the To: field
  * @param missingPositions - Positions that have not yet submitted an update
  * @param appUrl           - Base URL of the app (e.g. "https://example.com")
+ * @param updateUrl        - Optional override for the update link in the body
  * @returns A mailto: URL string safe for use in an href
  */
 export function buildReminderMailto({
@@ -35,10 +43,11 @@ export function buildReminderMailto({
   boardEmails,
   missingPositions,
   appUrl,
+  updateUrl,
 }: ReminderParams): string {
   const dateLabel = formatMeetingDate(meetingDate);
   const subject = `Board Meeting Reminder — ${dateLabel}`;
-  const preMeetingUrl = `${appUrl}/pre-meeting?date=${meetingDate}`;
+  const submitUrl = updateUrl ?? `${appUrl}/pre-meeting?date=${meetingDate}`;
 
   const missingSection =
     missingPositions.length > 0
@@ -50,7 +59,7 @@ export function buildReminderMailto({
   const body =
     `Reminder: Board meeting on ${dateLabel}.\n\n` +
     `Please submit your pre-meeting status update before the meeting:\n` +
-    `${preMeetingUrl}${missingSection}\n\nThank you.`;
+    `${submitUrl}${missingSection}\n\nThank you.`;
 
   return `mailto:${boardEmails.join(",")}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }

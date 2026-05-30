@@ -25,22 +25,32 @@ describe("cancelMeeting", () => {
   it("throws when the meeting is not in a cancellable state (no rows deleted)", async () => {
     mockChain.select.mockResolvedValue({ data: [], error: null });
     await expect(cancelMeeting("meeting-1")).rejects.toThrow("Meeting is not in a cancellable state");
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it("throws when Supabase returns an error", async () => {
     mockChain.select.mockResolvedValue({ data: null, error: { message: "DB error" } });
     await expect(cancelMeeting("meeting-1")).rejects.toThrow("DB error");
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it("resolves and calls revalidatePath on success", async () => {
     mockChain.select.mockResolvedValue({ data: [{ id: "meeting-1" }], error: null });
     await expect(cancelMeeting("meeting-1")).resolves.toBeUndefined();
     expect(revalidatePath).toHaveBeenCalledWith("/meetings");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+    expect(revalidatePath).toHaveBeenCalledTimes(2);
   });
 });
 
 describe("rescheduleMeeting", () => {
   let mockFrom: jest.Mock;
+
+  function getFutureDate(daysAhead = 1): string {
+    const d = new Date();
+    d.setDate(d.getDate() + daysAhead);
+    return d.toISOString().split("T")[0];
+  }
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -58,9 +68,7 @@ describe("rescheduleMeeting", () => {
   });
 
   it("throws when another meeting is already scheduled on that date", async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const newDate = tomorrow.toISOString().split("T")[0];
+    const newDate = getFutureDate();
 
     const conflictChain = buildChain({ maybeSingle: jest.fn().mockResolvedValue({ data: { id: "other-meeting" }, error: null }) });
     mockFrom.mockReturnValue(conflictChain);
@@ -68,10 +76,18 @@ describe("rescheduleMeeting", () => {
     await expect(rescheduleMeeting("meeting-1", newDate)).rejects.toThrow("A meeting is already scheduled for that date");
   });
 
+  it("throws when the conflict query returns a DB error", async () => {
+    const tomorrow = getFutureDate();
+    const conflictChain = buildChain({
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: { message: "conflict query failed" } }),
+    });
+    mockFrom.mockReturnValue(conflictChain);
+    await expect(rescheduleMeeting("meeting-1", tomorrow)).rejects.toThrow("conflict query failed");
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("throws when meeting is not pending (race condition guard)", async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const newDate = tomorrow.toISOString().split("T")[0];
+    const newDate = getFutureDate();
 
     const conflictChain = buildChain({ maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) });
     const updateChain = buildChain({ select: jest.fn().mockResolvedValue({ data: [], error: null }) });
@@ -81,9 +97,7 @@ describe("rescheduleMeeting", () => {
   });
 
   it("resolves and revalidates paths on success", async () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const newDate = tomorrow.toISOString().split("T")[0];
+    const newDate = getFutureDate();
 
     const conflictChain = buildChain({ maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }) });
     const updateChain = buildChain({ select: jest.fn().mockResolvedValue({ data: [{ id: "meeting-1" }], error: null }) });
@@ -93,5 +107,6 @@ describe("rescheduleMeeting", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/meetings");
     expect(revalidatePath).toHaveBeenCalledWith("/pre-meeting");
     expect(revalidatePath).toHaveBeenCalledWith("/agenda");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
   });
 });

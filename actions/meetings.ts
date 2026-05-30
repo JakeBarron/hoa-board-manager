@@ -189,7 +189,7 @@ export async function rescheduleMeeting(
   const parsed = new Date(newDate + "T00:00:00");
   if (isNaN(parsed.getTime())) throw new Error("Invalid date");
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
   if (newDate <= today) throw new Error("Date must be in the future");
 
   const supabase = await createClient();
@@ -218,6 +218,7 @@ export async function rescheduleMeeting(
   revalidatePath("/meetings");
   revalidatePath("/pre-meeting");
   revalidatePath("/agenda");
+  revalidatePath("/dashboard");
 }
 
 /**

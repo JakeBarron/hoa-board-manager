@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isChair } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { SettingRow } from "@/components/hoa/SettingRow";
@@ -31,11 +32,13 @@ export default async function SettingsPage() {
 
   const { data: position } = await supabase
     .from("positions")
-    .select("role")
+    .select("name, role")
     .eq("email", user.email!)
     .single();
 
-  if (position?.role !== "president") redirect("/dashboard");
+  if (!position) redirect("/login");
+  if (isChair(position.role)) redirect(`/committee/${position.name}`);
+  if (position.role !== "president") redirect("/dashboard");
 
   const { data: settings } = await supabase
     .from("settings")

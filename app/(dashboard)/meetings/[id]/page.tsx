@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { canEditAll } from "@/lib/permissions";
+import { canEditAll, isChair } from "@/lib/permissions";
 import { formatMeetingDate } from "@/lib/dates";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
@@ -22,7 +22,12 @@ export const metadata = { title: "Meeting Details — HOA Board" };
 
 // ─── Display helpers ──────────────────────────────────────────────────────────
 
-const POSITION_LABELS: Record<PositionName, string> = {
+type BoardPositionName = Extract<
+  PositionName,
+  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social"
+>;
+
+const POSITION_LABELS: Record<BoardPositionName, string> = {
   president: "President",
   vp: "Vice President",
   secretary: "Secretary",
@@ -33,7 +38,7 @@ const POSITION_LABELS: Record<PositionName, string> = {
   social: "Social",
 };
 
-const POSITION_ORDER: PositionName[] = [
+const POSITION_ORDER: BoardPositionName[] = [
   "president",
   "vp",
   "secretary",
@@ -193,6 +198,7 @@ export default async function MeetingDetailPage({
 
   const currentPosition = positionResult.data;
   if (!currentPosition) redirect("/login");
+  if (isChair(currentPosition.role)) redirect(`/committee/${currentPosition.name}`);
 
   const meeting = meetingResult.data;
   if (!meeting) redirect("/meetings");
@@ -298,11 +304,11 @@ export default async function MeetingDetailPage({
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
           <InfoRow
             label="Called to order by"
-            value={calledByName ? POSITION_LABELS[calledByName] : "Unknown"}
+            value={calledByName ? POSITION_LABELS[calledByName as BoardPositionName] : "Unknown"}
           />
           <InfoRow
             label="Seconded by"
-            value={secondedByName ? POSITION_LABELS[secondedByName] : "—"}
+            value={secondedByName ? POSITION_LABELS[secondedByName as BoardPositionName] : "—"}
           />
           <InfoRow label="Started" value={startedTime ?? "Not yet started"} />
           <InfoRow
@@ -389,7 +395,7 @@ export default async function MeetingDetailPage({
                       <span className="text-muted-foreground">
                         Proposed by{" "}
                         <span className="font-medium text-foreground">
-                          {POSITION_LABELS[proposedByName]}
+                          {POSITION_LABELS[proposedByName as BoardPositionName]}
                         </span>
                       </span>
                     )}
@@ -397,7 +403,7 @@ export default async function MeetingDetailPage({
                       <span className="text-muted-foreground">
                         Seconded by{" "}
                         <span className="font-medium text-foreground">
-                          {POSITION_LABELS[motionSecondedByName]}
+                          {POSITION_LABELS[motionSecondedByName as BoardPositionName]}
                         </span>
                       </span>
                     )}
@@ -482,7 +488,7 @@ export default async function MeetingDetailPage({
                     </p>
                     {assigneeName && (
                       <p className="text-xs text-muted-foreground">
-                        {POSITION_LABELS[assigneeName]}
+                        {POSITION_LABELS[assigneeName as BoardPositionName]}
                       </p>
                     )}
                   </div>

@@ -11,7 +11,12 @@ import type { PositionName } from "@/types/database";
 
 export const metadata = { title: "Meeting Agenda — HOA Board" };
 
-const POSITION_ORDER: PositionName[] = [
+type BoardPositionName = Extract<
+  PositionName,
+  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social"
+>;
+
+const POSITION_ORDER: BoardPositionName[] = [
   "president",
   "vp",
   "secretary",
@@ -22,7 +27,7 @@ const POSITION_ORDER: PositionName[] = [
   "social",
 ];
 
-const POSITION_LABELS: Record<PositionName, string> = {
+const POSITION_LABELS: Record<BoardPositionName, string> = {
   president: "President",
   vp: "Vice President",
   secretary: "Secretary",

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { canEditAll } from "@/lib/permissions";
+import { canEditAll, isChair } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { MeetingScheduleForm } from "@/components/hoa/MeetingScheduleForm";
@@ -22,11 +22,12 @@ export default async function NewMeetingPage() {
 
   const { data: position } = await supabase
     .from("positions")
-    .select("id, role")
+    .select("id, name, role")
     .eq("email", user.email!)
     .single();
 
   if (!position) redirect("/login");
+  if (isChair(position.role)) redirect(`/committee/${position.name}`);
   if (!canEditAll(position.role)) redirect("/meetings");
 
   return (

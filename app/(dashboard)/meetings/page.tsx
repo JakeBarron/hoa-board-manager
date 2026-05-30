@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { canEditAll } from "@/lib/permissions";
+import { canEditAll, isChair } from "@/lib/permissions";
 import { MeetingListClient } from "./MeetingListClient";
 import type { Meeting } from "@/types/database";
 
@@ -25,7 +25,7 @@ export default async function MeetingsPage() {
     await Promise.all([
       supabase
         .from("positions")
-        .select("id, role")
+        .select("id, name, role")
         .eq("email", user.email!)
         .single(),
       supabase
@@ -60,6 +60,7 @@ export default async function MeetingsPage() {
 
   const position = positionResult.data;
   if (!position) redirect("/login");
+  if (isChair(position.role)) redirect(`/committee/${position.name}`);
 
   const canSchedule = canEditAll(position.role);
   const canRun = canEditAll(position.role);

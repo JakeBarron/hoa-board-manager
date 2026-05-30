@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { canEditSection } from "@/lib/permissions";
+import { canEditSection, isChair } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { MinutesForm } from "@/components/hoa/MinutesForm";
@@ -8,7 +8,12 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { PositionName } from "@/types/database";
 
-const POSITION_LABELS: Record<PositionName, string> = {
+type BoardPositionName = Extract<
+  PositionName,
+  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social"
+>;
+
+const POSITION_LABELS: Record<BoardPositionName, string> = {
   president:  "President",
   vp:         "Vice President",
   secretary:  "Secretary",
@@ -45,6 +50,7 @@ export default async function NewMinutesPage({ params }: Props) {
   const targetPosition = targetPosResult.data;
 
   if (!currentPosition) redirect("/login");
+  if (isChair(currentPosition.role)) redirect(`/committee/${currentPosition.name}`);
   if (!targetPosition) redirect("/dashboard");
 
   const editable = canEditSection(
@@ -55,7 +61,7 @@ export default async function NewMinutesPage({ params }: Props) {
 
   if (!editable) redirect(`/board/${position}/minutes`);
 
-  const label = POSITION_LABELS[position as PositionName] ?? position;
+  const label = POSITION_LABELS[position as BoardPositionName] ?? position;
 
   return (
     <div className="space-y-6">

@@ -11,3 +11,5 @@ export { PreMeetingForm } from "./PreMeetingForm";
 export { MeetingScheduleForm } from "./MeetingScheduleForm";
 export { MeetingRunnerModal } from "./MeetingRunnerModal";
 export type { MeetingRunnerModalProps } from "./MeetingRunnerModal";
+export { InlineConfirm } from "./InlineConfirm";
+export type { InlineConfirmProps } from "./InlineConfirm";

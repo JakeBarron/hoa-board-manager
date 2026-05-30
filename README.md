@@ -1,36 +1,52 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HOA Board Manager
 
-## Getting Started
+An internal management portal for a homeowners association board. Built and maintained by the board president. Also a portfolio project demonstrating a full-stack Next.js application with real-world requirements.
 
-First, run the development server:
+## What it does
+
+- **Home dashboard** — board-wide summary of pending architecture requests and active capital projects
+- **My Office** — each board member and committee chair has a personal workspace with their todos, pre-meeting update form, and (for board members) meeting minutes
+- **Meetings** — schedule meetings, run them live with motion recording and voting, export minutes to `.docx`, store Drive links
+- **Architecture requests** — homeowners submit requests; president records board votes inline
+- **Agenda** — auto-generated meeting agenda from submitted pre-meeting updates, with mailto: reminder links for missing submissions
+- **CRA Projects** — capital reserve project tracker (in progress)
+- **Amenities / Interactive Map** — coming soon
+
+## Stack
+
+| Layer | Choice |
+|---|---|
+| Framework | Next.js 16 (App Router) + TypeScript |
+| Styling | Tailwind CSS v4 + shadcn/ui v4 (`@base-ui/react`) |
+| Backend | Supabase (Postgres + Auth + RLS) |
+| Hosting | Vercel |
+| Testing | Jest + React Testing Library (128 tests) |
+
+## Auth model
+
+Position-based accounts — 13 fixed logins (8 board positions + 5 committee chairs). No public registration. RLS policies enforce role-based access at the database layer, with per-page redirect guards in the app.
+
+| Role | Positions |
+|---|---|
+| `president` | President |
+| `officer` | VP, Secretary |
+| `member` | Treasurer, Pool, Membership, Tennis, Social |
+| `chair` | Web, Architecture, Welcoming, Clubhouse, CRA committees |
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev        # start dev server at localhost:3000
+pnpm test       # run Jest
+pnpm type-check # tsc --noEmit
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Requires `.env.local` with Supabase credentials (see `CLAUDE.md` for the full environment variable reference).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Architecture notes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `app/(dashboard)/layout.tsx` — authenticates every dashboard route, resolves position, renders sidebar
+- `lib/permissions.ts` — pure ACL functions; same logic mirrored in Supabase RLS policies
+- `components/hoa/` — all domain-specific components, self-contained and independently testable
+- `supabase/migrations/` — versioned SQL migrations, applied manually in the Supabase SQL editor

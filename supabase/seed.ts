@@ -126,25 +126,48 @@ const LOT_NUMBERS = Array.from({ length: 193 }, (_, i) => i + 1).filter(
 );
 
 /**
+ * Real membership categories and types. membership_type stores the short descriptor
+ * (the portion after " - " in the full compound name). The "Non-Covenant" entry has
+ * no sub-type so membership_type is null.
+ */
+const NON_MANDATORY_MEMBERSHIPS = [
+  { membership: "Non-Mandatory",    membership_type: "Civic" },
+  { membership: "Non-Mandatory",    membership_type: "Recreation Billable" },
+  { membership: "Non-Covenant",     membership_type: "Non-Participating" },
+  { membership: "Non-Mandatory",    membership_type: "Non Participating" },
+  { membership: "Non-Covenant",     membership_type: "Civic" },
+  { membership: "Non-ESL Resident", membership_type: "Recreation Billable" },
+  { membership: "Non-Covenant",     membership_type: null },
+];
+
+/**
  * Builds ~182 deterministic fake property rows for the e2e Supabase project.
+ * ~70% Mandatory/Recreation, ~30% spread evenly across the other 7 membership types.
  * Uses modular arithmetic so results are reproducible across runs.
  */
 function buildFakeProperties() {
-  return LOT_NUMBERS.map((lotNumber, i) => ({
-    lot_number: lotNumber,
-    first_name: FAKE_FIRST_NAMES[i % FAKE_FIRST_NAMES.length],
-    last_name: FAKE_LAST_NAMES[i % FAKE_LAST_NAMES.length],
-    account_number: `14${String(1000 + i).padStart(4, "0")}`,
-    street_address: `${2600 + i} ${FAKE_STREETS[i % FAKE_STREETS.length]}`,
-    membership: i % 12 === 0 ? "Non-Mandatory" : "Mandatory",
-    membership_type: i % 12 === 0 ? "Non-Mandatory" : "Mandatory - Recreation",
-    annual_lease_fee: i % 18 === 0 ? 150.0 : null,
-    email_1: i % 6 !== 0 ? `resident.${lotNumber}@example.com` : null,
-    email_2: i % 12 === 1 ? `resident.${lotNumber}.alt@example.com` : null,
-    key_fob_1: i % 8 !== 0 ? String(30000 + i * 2) : null,
-    key_fob_2: i % 8 !== 0 ? String(30001 + i * 2) : null,
-    sayor: i % 7 === 0,
-  }));
+  return LOT_NUMBERS.map((lotNumber, i) => {
+    const isMandatory = i % 10 < 7;
+    const membership = isMandatory
+      ? { membership: "Mandatory", membership_type: "Recreation" }
+      : NON_MANDATORY_MEMBERSHIPS[Math.floor(i / 10) % NON_MANDATORY_MEMBERSHIPS.length];
+
+    return {
+      lot_number: lotNumber,
+      first_name: FAKE_FIRST_NAMES[i % FAKE_FIRST_NAMES.length],
+      last_name: FAKE_LAST_NAMES[i % FAKE_LAST_NAMES.length],
+      account_number: `14${String(1000 + i).padStart(4, "0")}`,
+      street_address: `${2600 + i} ${FAKE_STREETS[i % FAKE_STREETS.length]}`,
+      membership: membership.membership,
+      membership_type: membership.membership_type,
+      annual_lease_fee: i % 18 === 0 ? 150.0 : null,
+      email_1: i % 6 !== 0 ? `resident.${lotNumber}@example.com` : null,
+      email_2: i % 12 === 1 ? `resident.${lotNumber}.alt@example.com` : null,
+      key_fob_1: i % 8 !== 0 ? String(30000 + i * 2) : null,
+      key_fob_2: i % 8 !== 0 ? String(30001 + i * 2) : null,
+      sayor: i % 7 === 0,
+    };
+  });
 }
 
 /**

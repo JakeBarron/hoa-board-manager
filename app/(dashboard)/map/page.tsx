@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/hoa/PageHeader";
 import { MapView } from "@/components/hoa/MapView";
 
 export const metadata = {
-  title: "Interactive Map — HOA Board",
+  title: "Properties — HOA Board",
 };
 
 /**
@@ -45,7 +45,7 @@ export default async function MapPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Interactive Map"
+        title="Properties"
         subtitle="Neighborhood lots and property information"
       />
       <MapView lots={lots} />

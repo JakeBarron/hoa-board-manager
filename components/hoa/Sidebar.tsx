@@ -18,7 +18,7 @@ const FUNCTION_NAV: NavItem[] = [
   { label: "CRA Projects", href: "/cra" },
   { label: "Agenda", href: "/agenda" },
   { label: "Amenities", href: "/amenities" },
-  { label: "Interactive Map", href: "/map" },
+  { label: "Properties", href: "/map" },
 ];
 
 const ADMIN_NAV: NavItem[] = [

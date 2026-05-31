@@ -32,7 +32,7 @@ describe("Sidebar — board member view", () => {
     expect(screen.getByRole("link", { name: "CRA Projects" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Agenda" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Amenities" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Interactive Map" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Properties" })).toBeInTheDocument();
   });
 
   it("does not show Board Sections group or individual position links", () => {
@@ -94,7 +94,7 @@ describe("Sidebar — chair view", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
     expect(screen.queryByRole("link", { name: "Meetings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Amenities" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Interactive Map" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Properties" })).not.toBeInTheDocument();
   });
 
   it("hides Admin section from chairs", () => {

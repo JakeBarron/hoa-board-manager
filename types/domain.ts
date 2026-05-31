@@ -43,3 +43,13 @@ export interface PreMeetingUpdateWithPosition {
   content: string;
   submittedAt: string;
 }
+
+/**
+ * Filter state for the interactive map property table.
+ * sayor: null = show all, true = SAYOR only, false = non-SAYOR only.
+ */
+export type MapFilters = {
+  membership: string;
+  sayor: boolean | null;
+  lotSearch: string;
+};

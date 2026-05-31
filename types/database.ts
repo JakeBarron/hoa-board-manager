@@ -312,6 +312,7 @@ export type Database = {
           created_at?: string;
         };
         Update: {
+          meeting_date?: string;
           called_by?: string;
           seconded_by?: string | null;
           seconded_at?: string | null;

@@ -18,7 +18,7 @@ Internal board management portal for an HOA. Also a portfolio project for Jake (
 | Backend | Supabase — Postgres DB + Auth + Storage |
 | Hosting | Vercel |
 | Package manager | pnpm |
-| Testing | Jest + React Testing Library (128 tests, all passing) |
+| Testing | Jest + React Testing Library (180 tests, all passing) |
 | Forms | react-hook-form + zod |
 
 ---
@@ -120,7 +120,7 @@ app/
   api/minutes/[id]/export/   — GET route: converts minutes HTML → .docx download
 
 actions/
-  auth.ts          — signIn / signOut
+  auth.ts          — signIn / signOut / requestPasswordReset / confirmPasswordReset / updatePassword
   architecture.ts  — recordVote (president only)
   meetings.ts      — createMeeting
   minutes.ts       — saveMinutes, updateMinutesDriveUrl
@@ -194,7 +194,9 @@ supabase/
 
 Permission checks live in `lib/permissions.ts`. RLS policies enforce the same rules at the DB layer.
 
-**Route protection:** `proxy.ts` → `lib/supabase/middleware.ts` → `updateSession()` calls `getUser()` (verified server-side, not just cookie) and redirects to `/login` if unauthenticated. `/architecture/[id]` is intentionally public (homeowner deep-link sharing).
+**Route protection:** `proxy.ts` → `lib/supabase/middleware.ts` → `updateSession()` calls `getUser()` (verified server-side, not just cookie) and redirects to `/login` if unauthenticated. `/architecture/[id]` is intentionally public (homeowner deep-link sharing). `/login`, `/auth/callback`, `/update-password`, and `/confirm-reset` are also public.
+
+**Password reset flow:** `requestPasswordReset` → Supabase sends email with link to `/confirm-reset?token_hash=...&type=recovery` (custom email template required — see `docs/services.md`). The confirmation page renders without consuming the token; the user must click "Confirm" to call `confirmPasswordReset` (server action → `verifyOtp` → redirect to `/update-password`). The intermediate page protects against email scanner pre-consumption of the one-time token. Transactional email delivered via Resend (SMTP configured in Supabase Auth settings).
 
 ---
 
@@ -297,7 +299,7 @@ Pages that show date pickers should:
 ```bash
 pnpm dev          # start dev server (run from /Users/jake/dev/hoa-board-manager)
 pnpm build        # production build
-pnpm test         # run Jest (128 tests)
+pnpm test         # run Jest (180 tests)
 pnpm type-check   # tsc --noEmit
 pnpm seed         # seed 13 position accounts against .env.local (e2e project)
 pnpm lint         # ESLint

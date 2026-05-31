@@ -20,7 +20,19 @@ An internal management portal for a homeowners association board. Built and main
 | Styling | Tailwind CSS v4 + shadcn/ui v4 (`@base-ui/react`) |
 | Backend | Supabase (Postgres + Auth + RLS) |
 | Hosting | Vercel |
-| Testing | Jest + React Testing Library (128 tests) |
+| Email | Resend |
+| Testing | Jest + React Testing Library (180 tests) |
+
+## External services
+
+| Service | Purpose | Free tier |
+|---|---|---|
+| [Supabase](https://supabase.com) | Database, auth, RLS | 500 MB DB, 50K MAU |
+| [Vercel](https://vercel.com) | Hosting, preview deployments, CI/CD | Hobby (non-commercial) |
+| [Resend](https://resend.com) | Transactional email (password reset) | 3,000 emails/month |
+| Google Drive | Meeting minutes document storage | 15 GB (personal account) |
+
+See `docs/services.md` for upgrade thresholds and cost notes.
 
 ## Auth model
 
@@ -32,6 +44,8 @@ Position-based accounts — 13 fixed logins (8 board positions + 5 committee cha
 | `officer` | VP, Secretary |
 | `member` | Treasurer, Pool, Membership, Tennis, Social |
 | `chair` | Web, Architecture, Welcoming, Clubhouse, CRA committees |
+
+Password reset uses an intermediate confirmation page (`/confirm-reset`) so the one-time token is only consumed when the user explicitly clicks "Confirm" — this protects against email security scanners pre-fetching and invalidating the link.
 
 ## Development
 

@@ -6,17 +6,34 @@ import type { MeetingStatus } from "@/types/database";
 
 /**
  * Schedules a new board meeting in 'pending' status.
- * Security enforced by RLS — any authenticated board member can call a meeting.
+ * Rejects dates in the past and dates that already have a pending or
+ * in_progress meeting scheduled. RLS enforces that only officers and
+ * president can insert meetings.
  *
  * @param positionId  - UUID of the board position calling the meeting
- * @param meetingDate - ISO date string (YYYY-MM-DD)
+ * @param meetingDate - ISO date string (YYYY-MM-DD); must be today or future
  * @returns The newly created meeting row ID
  */
 export async function createMeeting(
   positionId: string,
   meetingDate: string
 ): Promise<{ id: string }> {
+  const today = new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
+  if (meetingDate < today) throw new Error("Date must be in the future");
+
   const supabase = await createClient();
+
+  const { data: conflict, error: conflictError } = await supabase
+    .from("meetings")
+    .select("id")
+    .eq("meeting_date", meetingDate)
+    .in("status", ["pending", "in_progress"] as MeetingStatus[])
+    .maybeSingle();
+
+  if (conflictError) throw new Error(conflictError.message);
+  if (conflict) throw new Error("A meeting is already scheduled for that date");
 
   const { data, error } = await supabase
     .from("meetings")

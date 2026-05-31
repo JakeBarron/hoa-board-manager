@@ -1,4 +1,4 @@
-import { cancelMeeting, rescheduleMeeting } from "./meetings";
+import { cancelMeeting, rescheduleMeeting, createMeeting } from "./meetings";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
@@ -11,6 +11,12 @@ function buildChain(overrides: Record<string, unknown> = {}) {
     chain[m] = jest.fn().mockReturnValue(chain);
   }
   return Object.assign(chain, overrides);
+}
+
+function getFutureDate(daysAhead = 1): string {
+  const d = new Date();
+  d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().split("T")[0];
 }
 
 describe("cancelMeeting", () => {
@@ -45,12 +51,6 @@ describe("cancelMeeting", () => {
 
 describe("rescheduleMeeting", () => {
   let mockFrom: jest.Mock;
-
-  function getFutureDate(daysAhead = 1): string {
-    const d = new Date();
-    d.setDate(d.getDate() + daysAhead);
-    return d.toISOString().split("T")[0];
-  }
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -106,6 +106,50 @@ describe("rescheduleMeeting", () => {
     await expect(rescheduleMeeting("meeting-1", newDate)).resolves.toBeUndefined();
     expect(revalidatePath).toHaveBeenCalledWith("/meetings");
     expect(revalidatePath).toHaveBeenCalledWith("/pre-meeting");
+    expect(revalidatePath).toHaveBeenCalledWith("/agenda");
+    expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
+  });
+});
+
+describe("createMeeting", () => {
+  let mockFrom: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockFrom = jest.fn();
+    (createClient as jest.Mock).mockResolvedValue({ from: mockFrom });
+  });
+
+  it("throws when date is in the past", async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const pastDate = yesterday.toISOString().split("T")[0];
+    await expect(createMeeting("pos-1", pastDate)).rejects.toThrow("Date must be in the future");
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("throws when a meeting is already scheduled on that date", async () => {
+    const futureDate = getFutureDate();
+    const conflictChain = buildChain({
+      maybeSingle: jest.fn().mockResolvedValue({ data: { id: "existing" }, error: null }),
+    });
+    mockFrom.mockReturnValue(conflictChain);
+    await expect(createMeeting("pos-1", futureDate)).rejects.toThrow("A meeting is already scheduled for that date");
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("returns the new meeting id and revalidates on success", async () => {
+    const futureDate = getFutureDate();
+    const conflictChain = buildChain({
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    const insertChain = buildChain({
+      single: jest.fn().mockResolvedValue({ data: { id: "new-meeting" }, error: null }),
+    });
+    mockFrom.mockReturnValueOnce(conflictChain).mockReturnValueOnce(insertChain);
+    const result = await createMeeting("pos-1", futureDate);
+    expect(result).toEqual({ id: "new-meeting" });
+    expect(revalidatePath).toHaveBeenCalledWith("/meetings");
     expect(revalidatePath).toHaveBeenCalledWith("/agenda");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");
   });

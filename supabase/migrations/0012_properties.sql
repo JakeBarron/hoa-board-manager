@@ -53,3 +53,7 @@ create policy "officer update"
 
 -- No insert or delete policies.
 -- Data is seeded via service role key only (supabase/seed.ts).
+
+-- Explicit grants required for tables created after the initial schema's
+-- "grant all on all tables" snapshot. Matches the pattern in 0001_initial_schema.sql.
+grant all on properties to anon, authenticated, service_role;

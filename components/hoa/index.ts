@@ -8,7 +8,6 @@ export { TodoList } from "./TodoList";
 export { RichTextEditor } from "./RichTextEditor";
 export { MinutesForm } from "./MinutesForm";
 export { PreMeetingForm } from "./PreMeetingForm";
-export { MeetingScheduleForm } from "./MeetingScheduleForm";
 export { MeetingRunnerModal } from "./MeetingRunnerModal";
 export type { MeetingRunnerModalProps } from "./MeetingRunnerModal";
 export { InlineConfirm } from "./InlineConfirm";

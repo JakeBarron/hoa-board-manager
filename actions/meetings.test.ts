@@ -138,6 +138,29 @@ describe("createMeeting", () => {
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
+  it("throws when the conflict check query returns a DB error", async () => {
+    const futureDate = getFutureDate();
+    const conflictChain = buildChain({
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: { message: "conflict query failed" } }),
+    });
+    mockFrom.mockReturnValue(conflictChain);
+    await expect(createMeeting("pos-1", futureDate)).rejects.toThrow("conflict query failed");
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("throws when the insert fails", async () => {
+    const futureDate = getFutureDate();
+    const conflictChain = buildChain({
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    const insertChain = buildChain({
+      single: jest.fn().mockResolvedValue({ data: null, error: { message: "insert failed" } }),
+    });
+    mockFrom.mockReturnValueOnce(conflictChain).mockReturnValueOnce(insertChain);
+    await expect(createMeeting("pos-1", futureDate)).rejects.toThrow("insert failed");
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
   it("returns the new meeting id and revalidates on success", async () => {
     const futureDate = getFutureDate();
     const conflictChain = buildChain({

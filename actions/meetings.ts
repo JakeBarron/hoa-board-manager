@@ -11,7 +11,7 @@ import type { MeetingStatus } from "@/types/database";
  * president can insert meetings.
  *
  * @param positionId  - UUID of the board position calling the meeting
- * @param meetingDate - ISO date string (YYYY-MM-DD); must be today or future
+ * @param meetingDate - ISO date string (YYYY-MM-DD) in America/New_York timezone; must be today or a future date
  * @returns The newly created meeting row ID
  */
 export async function createMeeting(
@@ -21,6 +21,7 @@ export async function createMeeting(
   const today = new Date().toLocaleDateString("en-CA", {
     timeZone: "America/New_York",
   });
+  // Both meetingDate and today are YYYY-MM-DD strings — lexicographic comparison is correct for ISO dates
   if (meetingDate < today) throw new Error("Date must be in the future");
 
   const supabase = await createClient();

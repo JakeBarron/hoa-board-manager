@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { canEditAll, isChair } from "@/lib/permissions";
+import { getUpcomingMeetingDates } from "@/lib/dates";
 import { MeetingListClient } from "./MeetingListClient";
 import type { Meeting } from "@/types/database";
 
@@ -55,7 +56,7 @@ export default async function MeetingsPage() {
       supabase
         .from("settings")
         .select("key, value")
-        .in("key", ["hoa_name", "drive_folder_url"]),
+        .in("key", ["hoa_name", "drive_folder_url", "meeting_cadence"]),
     ]);
 
   const position = positionResult.data;
@@ -93,6 +94,13 @@ export default async function MeetingsPage() {
   const hoaName = settingsMap.get("hoa_name");
   const driveFolder = settingsMap.get("drive_folder_url");
 
+  const cadence = settingsMap.get("meeting_cadence") ?? "";
+  const bookedDates = new Set(upcoming.map((m) => m.meeting_date));
+  const candidateDates = getUpcomingMeetingDates(cadence, 6);
+  const defaultScheduleDate =
+    candidateDates.find((d) => !bookedDates.has(d)) ??
+    new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+
   return (
     <MeetingListClient
       canRun={canRun}
@@ -104,6 +112,7 @@ export default async function MeetingsPage() {
       past={past}
       hoaName={hoaName}
       driveFolder={driveFolder}
+      defaultScheduleDate={defaultScheduleDate}
     />
   );
 }

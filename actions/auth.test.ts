@@ -1,4 +1,4 @@
-import { requestPasswordReset, updatePassword } from "./auth";
+import { requestPasswordReset, confirmPasswordReset, updatePassword } from "./auth";
 import { createClient } from "@/lib/supabase/server";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -8,6 +8,7 @@ jest.mock("next/headers");
 jest.mock("next/navigation", () => ({ redirect: jest.fn() }));
 
 const mockResetPasswordForEmail = jest.fn();
+const mockVerifyOtp = jest.fn();
 const mockUpdateUser = jest.fn();
 const mockSignOut = jest.fn();
 
@@ -16,6 +17,7 @@ beforeEach(() => {
   (createClient as jest.Mock).mockResolvedValue({
     auth: {
       resetPasswordForEmail: mockResetPasswordForEmail,
+      verifyOtp: mockVerifyOtp,
       updateUser: mockUpdateUser,
       signOut: mockSignOut,
     },
@@ -30,13 +32,29 @@ describe("requestPasswordReset", () => {
     mockResetPasswordForEmail.mockResolvedValue({ error: null });
     await requestPasswordReset("test@example.com");
     expect(mockResetPasswordForEmail).toHaveBeenCalledWith("test@example.com", {
-      redirectTo: "http://localhost:3000/auth/callback",
+      redirectTo: "http://localhost:3000/confirm-reset",
     });
   });
 
   it("does not throw when Supabase returns an error", async () => {
     mockResetPasswordForEmail.mockResolvedValue({ error: { message: "User not found" } });
     await expect(requestPasswordReset("unknown@example.com")).resolves.toBeUndefined();
+  });
+});
+
+describe("confirmPasswordReset", () => {
+  it("calls verifyOtp with token_hash and type, then redirects on success", async () => {
+    mockVerifyOtp.mockResolvedValue({ error: null });
+    await confirmPasswordReset("tok123", "recovery");
+    expect(mockVerifyOtp).toHaveBeenCalledWith({ token_hash: "tok123", type: "recovery" });
+    expect(redirect).toHaveBeenCalledWith("/update-password");
+  });
+
+  it("returns an error string and does not redirect when verifyOtp fails", async () => {
+    mockVerifyOtp.mockResolvedValue({ error: { message: "OTP has expired or already been used" } });
+    const result = await confirmPasswordReset("badtok", "recovery");
+    expect(result).toBe("OTP has expired or already been used");
+    expect(redirect).not.toHaveBeenCalled();
   });
 });
 

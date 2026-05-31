@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { type EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -45,8 +46,27 @@ export async function requestPasswordReset(email: string): Promise<void> {
   const supabase = await createClient();
   const origin = (await headers()).get("origin") ?? "https://board.eastspringlake.com";
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback`,
+    redirectTo: `${origin}/confirm-reset`,
   });
+}
+
+/**
+ * Verifies a password-reset OTP token and redirects to /update-password on success.
+ * Called from the /confirm-reset page when the user explicitly confirms the reset.
+ * The token is only consumed here — never on the GET that renders the confirmation page.
+ *
+ * @param token_hash - The token_hash from the reset email link
+ * @param type - The OTP type (should be "recovery")
+ * @returns An error message string if verification fails, otherwise redirects
+ */
+export async function confirmPasswordReset(
+  token_hash: string,
+  type: EmailOtpType
+): Promise<string | never> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ token_hash, type });
+  if (error) return error.message;
+  redirect("/update-password");
 }
 
 /**

@@ -52,9 +52,10 @@ create table properties (
 
 alter table properties enable row level security;
 
--- Board members only can read (president, officer, member — not committee chairs)
--- Chairs do not need access to resident PII (emails, addresses, key fobs)
-create policy "board member read"
+-- Voting members only can read (president, officer, member — not committee chairs)
+-- Includes: President, VP, Secretary, Treasurer, Pool, Membership, Tennis, Social, Grounds
+-- Excludes: Architecture, CRA, Welcoming, Web, Clubhouse chairs
+create policy "voting member read"
   on properties for select
   to authenticated
   using (
@@ -94,7 +95,9 @@ create policy "officer update"
 
 ## Permissions
 
-Board members (president, officer, member) can access this page. Committee chairs are redirected to `/dashboard` — they do not need access to resident PII.
+Voting members (president, officer, member roles) can access this page. This includes: President, VP, Secretary, Treasurer, Pool, Membership, Tennis, Social, and Grounds (once added). Committee chairs (Architecture, CRA, Welcoming, Web, Clubhouse) are redirected to `/dashboard`.
+
+Treasurer access is an explicit requirement — dues status and resident contact information are core to their role.
 
 The page adds a server-side redirect guard consistent with other restricted pages:
 ```typescript
@@ -112,7 +115,7 @@ Future update UI will be officer/president only (enforced by the RLS policy abov
 This table contains resident PII: full names, street addresses, email addresses, and key fob numbers. The following controls are in place:
 
 ### RLS as the primary enforcement layer
-The `board member read` policy means a committee chair's JWT returns zero rows even if they call the Supabase API directly. The `officer update` policy ensures no board member below officer rank can modify records via direct API calls either. No insert or delete policies exist — the only write path is the service role seed script.
+The `voting member read` policy means a committee chair's JWT returns zero rows even if they call the Supabase API directly. The `officer update` policy ensures no board member below officer rank can modify records via direct API calls either. No insert or delete policies exist — the only write path is the service role seed script.
 
 ### Server-side redirect guard (defense-in-depth)
 The `/map` page redirects chairs before any data is fetched. Even if the RLS policy were misconfigured, chairs would never receive a payload.

@@ -104,7 +104,7 @@ const [filters, setFilters] = useState<MapFilters>({
   lotSearch: '',
 });
 
-const DEFAULT_FILTERS: MapFilters = { membership: '', sayor: false, lotSearch: '' };
+const DEFAULT_FILTERS: MapFilters = { membership: '', sayor: null, lotSearch: '' };
 ```
 
 `handleLotClick(lotNumber: number)` — called by both map polygon clicks and table lot# cell clicks. Toggles: if `selectedLotId === lotNumber`, clears it; otherwise sets it. Clears `filters.lotSearch` when a lot is selected from the map (the selected lot is the filter).
@@ -145,7 +145,7 @@ TanStack Table (React Table v8) rendered with the existing shadcn/ui `Table` pri
 
 Sits between the map and table. Contains:
 - Membership Type dropdown (derived from distinct values in the loaded data)
-- SAYOR toggle (checkbox or switch)
+- SAYOR select with three options: "All", "SAYOR", "Non-SAYOR" (maps to `null`, `true`, `false`)
 - Lot # search input (string match on `lot_number`)
 - "Show All" button — disabled when `selectedLotId` is null and all filters are default
 
@@ -175,7 +175,7 @@ export type Property = {
 
 export type MapFilters = {
   membership: string;
-  sayor: boolean;
+  sayor: boolean | null; // null = show all, true = SAYOR only, false = non-SAYOR only
   lotSearch: string;
 };
 ```
@@ -199,7 +199,7 @@ function filterProperties(
   }
   return lots.filter(l => {
     if (filters.membership && l.membership_type !== filters.membership) return false;
-    if (filters.sayor && !l.sayor) return false;
+    if (filters.sayor !== null && l.sayor !== filters.sayor) return false;
     if (filters.lotSearch && !String(l.lot_number).includes(filters.lotSearch)) return false;
     return true;
   });
@@ -214,7 +214,9 @@ function filterProperties(
 - No filters → all rows returned
 - `selectedLotId` set → exactly one row, other filters ignored
 - Membership filter → only matching rows
-- SAYOR filter → only `sayor: true` rows
+- SAYOR `null` → all rows returned
+- SAYOR `true` → only `sayor: true` rows
+- SAYOR `false` → only `sayor: false` rows
 - Lot# search → partial string match
 - Combined filters (membership + SAYOR) → intersection
 

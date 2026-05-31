@@ -52,10 +52,18 @@ create table properties (
 
 alter table properties enable row level security;
 
--- All authenticated users (board + chairs) can read
-create policy "authenticated read"
+-- Board members only can read (president, officer, member — not committee chairs)
+-- Chairs do not need access to resident PII (emails, addresses, key fobs)
+create policy "board member read"
   on properties for select
-  to authenticated using (true);
+  to authenticated
+  using (
+    exists (
+      select 1 from positions
+      where email = auth.email()
+      and role in ('president', 'officer', 'member')
+    )
+  );
 
 -- Officer+ can update (no UI yet — policy ready for future edit form)
 create policy "officer update"
@@ -77,6 +85,7 @@ create policy "officer update"
   );
 
 -- No insert/delete policies — data managed via service role seed only
+-- Service role bypasses RLS by design; it must never be used in app code
 ```
 
 `lot_number` is the join key between SVG polygons and property rows. No `created_at` — this data originates from an external aging report and timestamps are meaningless.
@@ -85,9 +94,50 @@ create policy "officer update"
 
 ## Permissions
 
-This page is visible to all 13 authenticated positions (board members + committee chairs). No redirect guard needed — the data is read-only and relevant to everyone. The sidebar already shows the Map link to all roles.
+Board members (president, officer, member) can access this page. Committee chairs are redirected to `/dashboard` — they do not need access to resident PII.
+
+The page adds a server-side redirect guard consistent with other restricted pages:
+```typescript
+if (isChair(role)) redirect('/dashboard');
+```
+
+This is defense-in-depth: the RLS policy already blocks chair JWTs at the database level. The server redirect prevents chairs from ever seeing the page or receiving the property payload.
 
 Future update UI will be officer/president only (enforced by the RLS policy above).
+
+---
+
+## Security & PII Protection
+
+This table contains resident PII: full names, street addresses, email addresses, and key fob numbers. The following controls are in place:
+
+### RLS as the primary enforcement layer
+The `board member read` policy means a committee chair's JWT returns zero rows even if they call the Supabase API directly. The `officer update` policy ensures no board member below officer rank can modify records via direct API calls either. No insert or delete policies exist — the only write path is the service role seed script.
+
+### Server-side redirect guard (defense-in-depth)
+The `/map` page redirects chairs before any data is fetched. Even if the RLS policy were misconfigured, chairs would never receive a payload.
+
+### Client payload — explicit tradeoff
+The "fetch all 180 rows, filter client-side" architecture serializes the full property dataset into the page's HTML hydration payload. Any logged-in board member with DevTools can read the raw data. This is an accepted tradeoff for an internal portal with 8 trusted board members — it avoids per-interaction network calls and keeps the UX fast. If the user base or sensitivity level changes, the architecture should be revisited (e.g. server-side filtering with paginated fetches).
+
+### Explicit column selection
+The server fetch uses an explicit column list rather than `select('*')`:
+```typescript
+supabase
+  .from('properties')
+  .select('id, lot_number, first_name, last_name, account_number, street_address, membership, membership_type, annual_lease_fee, email_1, email_2, key_fob_1, key_fob_2, sayor')
+  .order('lot_number')
+```
+This prevents future column additions (e.g. phone numbers) from being silently included in the payload.
+
+### No caching
+The page calls `noStore()` from `next/cache` to prevent Next.js from caching the response. A cached response could serve one authenticated user's data to a different session.
+
+### No client-side persistence
+Property data lives only in React component state (in-memory). It is never written to `localStorage`, `sessionStorage`, or the URL. The dataset clears when the tab closes.
+
+### Service role isolation
+The seed script uses the Supabase service role key, which bypasses RLS by design. The service role key must never appear in app code (`lib/supabase/client.ts` or `lib/supabase/server.ts`). It is only used in `supabase/seed.ts` run locally via `pnpm seed`.
 
 ---
 
@@ -98,11 +148,7 @@ Future update UI will be officer/president only (enforced by the RLS policy abov
 const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
 
 // Table filters are grouped — they reset together and are conceptually a unit
-const [filters, setFilters] = useState<MapFilters>({
-  membership: '',
-  sayor: false,
-  lotSearch: '',
-});
+const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
 
 const DEFAULT_FILTERS: MapFilters = { membership: '', sayor: null, lotSearch: '' };
 ```
@@ -237,7 +283,7 @@ function filterProperties(
 | `supabase/migrations/0012_properties.sql` | New — properties table + RLS |
 | `types/database.ts` | Add properties table type |
 | `types/domain.ts` | Add `Property`, `MapFilters` |
-| `app/(dashboard)/map/page.tsx` | Replace stub — server fetch + render MapView |
+| `app/(dashboard)/map/page.tsx` | Replace stub — server fetch + noStore() + chair redirect + render MapView |
 | `components/hoa/MapView.tsx` | New — client component, owns all state |
 | `components/hoa/NeighborhoodMap.tsx` | New — inline SVG with placeholder polygons |
 | `components/hoa/PropertyTable.tsx` | New — TanStack Table, 13 columns |

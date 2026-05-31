@@ -15,3 +15,5 @@ export { InlineConfirm } from "./InlineConfirm";
 export type { InlineConfirmProps } from "./InlineConfirm";
 export { InlineDateInput } from "./InlineDateInput";
 export type { InlineDateInputProps } from "./InlineDateInput";
+export { ScheduleMeetingModal } from "./ScheduleMeetingModal";
+export type { ScheduleMeetingModalProps } from "./ScheduleMeetingModal";

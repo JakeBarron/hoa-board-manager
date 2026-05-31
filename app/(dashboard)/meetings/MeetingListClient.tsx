@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ScheduleMeetingModal } from "@/components/hoa/ScheduleMeetingModal";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
@@ -36,6 +36,8 @@ interface MeetingListClientProps {
   driveFolder?: string;
   /** HOA name from settings */
   hoaName?: string;
+  /** ISO date (YYYY-MM-DD) pre-filled in the schedule modal — next available cadence date */
+  defaultScheduleDate: string;
 }
 
 /**
@@ -49,8 +51,9 @@ interface MeetingListClientProps {
  * @param positions          - All board positions (passed through to the modal)
  * @param currentPositionId  - Current user's position UUID
  * @param existingMeeting    - Any open meeting found for today
- * @param upcoming           - Upcoming meeting rows
- * @param past               - Past meeting rows
+ * @param upcoming                - Upcoming meeting rows
+ * @param past                    - Past meeting rows
+ * @param defaultScheduleDate     - ISO date pre-filled in the schedule modal (next available cadence date)
  */
 export function MeetingListClient({
   canRun,
@@ -62,12 +65,14 @@ export function MeetingListClient({
   past,
   driveFolder,
   hoaName,
+  defaultScheduleDate,
 }: MeetingListClientProps) {
   const [modalMeetingId, setModalMeetingId] = useState<string | null>(null);
   const [resolvedExistingMeeting, setResolvedExistingMeeting] =
     useState(existingMeeting);
   const [isPending, startTransition] = useTransition();
   const [startError, setStartError] = useState<string | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const handleStartMeeting = () => {
     setStartError(null);
@@ -97,6 +102,13 @@ export function MeetingListClient({
           action={
             canSchedule ? (
               <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowScheduleModal(true)}
+                >
+                  Schedule meeting
+                </Button>
                 {canRun && (
                   <Button
                     size="sm"
@@ -107,14 +119,6 @@ export function MeetingListClient({
                     {isPending ? "Starting…" : "Start Meeting"}
                   </Button>
                 )}
-                <Button
-                  nativeButton={false}
-                  render={<Link href="/meetings/new" />}
-                  size="sm"
-                  variant="outline"
-                >
-                  Schedule meeting
-                </Button>
               </div>
             ) : undefined
           }
@@ -149,12 +153,20 @@ export function MeetingListClient({
           <SectionCard title="Past">
             <ul className="divide-y divide-border">
               {past.map((m) => (
-                <MeetingRow key={m.id} meeting={m} canSchedule={false} />
+                <MeetingRow key={m.id} meeting={m} canSchedule={canSchedule} />
               ))}
             </ul>
           </SectionCard>
         )}
       </div>
+
+      {showScheduleModal && (
+        <ScheduleMeetingModal
+          positionId={currentPositionId}
+          defaultDate={defaultScheduleDate}
+          onClose={() => setShowScheduleModal(false)}
+        />
+      )}
 
       {modalMeetingId && (
         <MeetingRunnerModal

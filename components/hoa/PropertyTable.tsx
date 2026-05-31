@@ -46,8 +46,12 @@ const buildColumns = (onLotClick: (lotNumber: number) => void) => [
     header: "Street Address",
     cell: (info) => info.getValue() ?? "—",
   }),
+  col.accessor("membership", {
+    header: "Membership",
+    cell: (info) => info.getValue() ?? "—",
+  }),
   col.accessor("membership_type", {
-    header: "Membership Type",
+    header: "Type",
     cell: (info) => info.getValue() ?? "—",
   }),
   col.accessor("annual_lease_fee", {

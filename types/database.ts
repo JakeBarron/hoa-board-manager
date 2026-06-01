@@ -417,6 +417,7 @@ export type Database = {
           membership: string | null;
           membership_type: string | null;
           annual_lease_fee: number | null;
+          has_annual_lease_fee: boolean;
           email_1: string | null;
           email_2: string | null;
           key_fob_1: string | null;
@@ -433,6 +434,7 @@ export type Database = {
           membership?: string | null;
           membership_type?: string | null;
           annual_lease_fee?: number | null;
+          has_annual_lease_fee?: boolean;
           email_1?: string | null;
           email_2?: string | null;
           key_fob_1?: string | null;
@@ -449,6 +451,7 @@ export type Database = {
           membership?: string | null;
           membership_type?: string | null;
           annual_lease_fee?: number | null;
+          has_annual_lease_fee?: boolean;
           email_1?: string | null;
           email_2?: string | null;
           key_fob_1?: string | null;

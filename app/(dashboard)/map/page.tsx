@@ -36,7 +36,7 @@ export default async function MapPage() {
   const propertiesResult = await supabase
     .from("properties")
     .select(
-      "id, lot_number, first_name, last_name, account_number, street_address, membership, membership_type, annual_lease_fee, email_1, email_2, key_fob_1, key_fob_2, sayor"
+      "id, lot_number, first_name, last_name, account_number, street_address, membership, membership_type, annual_lease_fee, has_annual_lease_fee, email_1, email_2, key_fob_1, key_fob_2, sayor"
     )
     .order("lot_number");
 

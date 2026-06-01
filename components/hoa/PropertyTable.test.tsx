@@ -13,6 +13,7 @@ const make = (overrides: Partial<Property>): Property => ({
   membership: "Mandatory",
   membership_type: "Mandatory - Recreation",
   annual_lease_fee: null,
+  has_annual_lease_fee: false,
   email_1: "jane@example.com",
   email_2: null,
   key_fob_1: "30001",
@@ -53,6 +54,12 @@ describe("PropertyTable", () => {
     render(<PropertyTable lots={[sayorLot, nonSayorLot]} onLotClick={() => {}} />);
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("No")).toBeInTheDocument();
+  });
+
+  it("shows 'Yes' in Annual Lease Fee when has_annual_lease_fee is true and no dollar amount", () => {
+    const lot = make({ has_annual_lease_fee: true, annual_lease_fee: null });
+    render(<PropertyTable lots={[lot]} onLotClick={() => {}} />);
+    expect(screen.getByText("Yes")).toBeInTheDocument();
   });
 
   it("renders an empty table body when no lots are provided", () => {

@@ -192,7 +192,14 @@ async function main() {
     await seedPosition(pos);
   }
 
-  await seedProperties();
+  // Fake property data is for e2e only. Guard behind an explicit opt-in so
+  // running this script against prod doesn't pollute the real properties table.
+  // Use import-properties-prod.ts to load real data into prod.
+  if (process.env.SEED_FAKE_PROPERTIES === "true") {
+    await seedProperties();
+  } else {
+    console.log("\nSkipping fake properties (set SEED_FAKE_PROPERTIES=true to include).");
+  }
 
   console.log("\nDone. Remember to update emails and passwords before sharing.");
 }

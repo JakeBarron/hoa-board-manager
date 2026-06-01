@@ -57,8 +57,10 @@ const buildColumns = (onLotClick: (lotNumber: number) => void) => [
   col.accessor("annual_lease_fee", {
     header: "Annual Lease Fee",
     cell: (info) => {
-      const v = info.getValue();
-      return v != null ? `$${v.toFixed(2)}` : "—";
+      const fee = info.getValue();
+      if (fee != null) return `$${fee.toFixed(2)}`;
+      if (info.row.original.has_annual_lease_fee) return "Yes";
+      return "—";
     },
   }),
   col.accessor("sayor", {

@@ -14,6 +14,7 @@ const make = (overrides: Partial<Property>): Property => ({
   membership: "Mandatory",
   membership_type: "Mandatory - Recreation",
   annual_lease_fee: null,
+  has_annual_lease_fee: false,
   email_1: null,
   email_2: null,
   key_fob_1: null,

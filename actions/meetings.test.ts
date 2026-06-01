@@ -19,6 +19,16 @@ function getFutureDate(daysAhead = 1): string {
   return d.toISOString().split("T")[0];
 }
 
+/**
+ * Returns a date clearly in the past in America/New_York, matching the timezone
+ * the action functions use for validation. Using a fixed past date avoids the
+ * UTC-vs-Eastern mismatch that can occur in CI when UTC and Eastern dates differ.
+ */
+function getPastDate(): string {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+    .toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+}
+
 describe("cancelMeeting", () => {
   let mockChain: ReturnType<typeof buildChain>;
 
@@ -63,8 +73,7 @@ describe("rescheduleMeeting", () => {
   });
 
   it("throws when date is today or in the past", async () => {
-    const today = new Date().toISOString().split("T")[0];
-    await expect(rescheduleMeeting("meeting-1", today)).rejects.toThrow("Date must be in the future");
+    await expect(rescheduleMeeting("meeting-1", getPastDate())).rejects.toThrow("Date must be in the future");
   });
 
   it("throws when another meeting is already scheduled on that date", async () => {
@@ -121,10 +130,7 @@ describe("createMeeting", () => {
   });
 
   it("throws when date is in the past", async () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const pastDate = yesterday.toISOString().split("T")[0];
-    await expect(createMeeting("pos-1", pastDate)).rejects.toThrow("Date must be in the future");
+    await expect(createMeeting("pos-1", getPastDate())).rejects.toThrow("Date must be in the future");
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 

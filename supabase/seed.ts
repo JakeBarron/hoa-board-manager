@@ -96,12 +96,103 @@ const seedPosition = async (pos: (typeof positions)[number]): Promise<void> => {
   console.log(`  ✓ Inserted position row for ${pos.name}`);
 };
 
+const FAKE_STREETS = [
+  "Long Lake Drive",
+  "Camp Point Court",
+  "Spring Rock Court",
+  "Stonebrook Court",
+  "Lakeside Lane",
+  "Crystal Ridge Way",
+];
+
+const FAKE_FIRST_NAMES = [
+  "James", "Mary", "Robert", "Patricia", "John", "Jennifer",
+  "Michael", "Linda", "William", "Barbara", "David", "Elizabeth",
+  "Richard", "Susan", "Joseph", "Jessica", "Thomas", "Sarah",
+  "Charles", "Karen",
+];
+
+const FAKE_LAST_NAMES = [
+  "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia",
+  "Miller", "Davis", "Wilson", "Anderson", "Taylor", "Thomas",
+  "Jackson", "White", "Harris", "Martin", "Thompson", "Moore",
+  "Young", "Allen", "King", "Wright", "Scott", "Green",
+];
+
+/** Lot numbers 1–193 with 11 gaps for realism (~182 lots). */
+const SKIPPED_LOTS = new Set([15, 32, 47, 78, 99, 121, 145, 167, 181, 188, 192]);
+const LOT_NUMBERS = Array.from({ length: 193 }, (_, i) => i + 1).filter(
+  (n) => !SKIPPED_LOTS.has(n)
+);
+
+/**
+ * Real membership categories and types. membership_type stores the short descriptor
+ * (the portion after " - " in the full compound name). The "Non-Covenant" entry has
+ * no sub-type so membership_type is null.
+ */
+const NON_MANDATORY_MEMBERSHIPS = [
+  { membership: "Non-Mandatory",    membership_type: "Civic" },
+  { membership: "Non-Mandatory",    membership_type: "Recreation Billable" },
+  { membership: "Non-Covenant",     membership_type: "Non-Participating" },
+  { membership: "Non-Mandatory",    membership_type: "Non Participating" },
+  { membership: "Non-Covenant",     membership_type: "Civic" },
+  { membership: "Non-ESL Resident", membership_type: "Recreation Billable" },
+  { membership: "Non-Covenant",     membership_type: null },
+];
+
+/**
+ * Builds ~182 deterministic fake property rows for the e2e Supabase project.
+ * ~70% Mandatory/Recreation, ~30% spread evenly across the other 7 membership types.
+ * Uses modular arithmetic so results are reproducible across runs.
+ */
+function buildFakeProperties() {
+  return LOT_NUMBERS.map((lotNumber, i) => {
+    const isMandatory = i % 10 < 7;
+    const membership = isMandatory
+      ? { membership: "Mandatory", membership_type: "Recreation" }
+      : NON_MANDATORY_MEMBERSHIPS[Math.floor(i / 10) % NON_MANDATORY_MEMBERSHIPS.length];
+
+    return {
+      lot_number: lotNumber,
+      first_name: FAKE_FIRST_NAMES[i % FAKE_FIRST_NAMES.length],
+      last_name: FAKE_LAST_NAMES[i % FAKE_LAST_NAMES.length],
+      account_number: `14${String(1000 + i).padStart(4, "0")}`,
+      street_address: `${2600 + i} ${FAKE_STREETS[i % FAKE_STREETS.length]}`,
+      membership: membership.membership,
+      membership_type: membership.membership_type,
+      annual_lease_fee: i % 18 === 0 ? 150.0 : null,
+      email_1: i % 6 !== 0 ? `resident.${lotNumber}@example.com` : null,
+      email_2: i % 12 === 1 ? `resident.${lotNumber}.alt@example.com` : null,
+      key_fob_1: i % 8 !== 0 ? String(30000 + i * 2) : null,
+      key_fob_2: i % 8 !== 0 ? String(30001 + i * 2) : null,
+      sayor: i % 7 === 0,
+    };
+  });
+}
+
+/**
+ * Upserts ~182 fake property rows into the e2e `properties` table.
+ * Safe to re-run — uses upsert on lot_number.
+ */
+async function seedProperties(): Promise<void> {
+  console.log("\nSeeding properties…");
+  const properties = buildFakeProperties();
+  const { error } = await supabase
+    .from("properties")
+    .upsert(properties, { onConflict: "lot_number" });
+
+  if (error) throw new Error(`Failed to seed properties: ${error.message}`);
+  console.log(`  ✓ Upserted ${properties.length} property rows`);
+}
+
 async function main() {
   console.log("Seeding board positions…\n");
 
   for (const pos of positions) {
     await seedPosition(pos);
   }
+
+  await seedProperties();
 
   console.log("\nDone. Remember to update emails and passwords before sharing.");
 }

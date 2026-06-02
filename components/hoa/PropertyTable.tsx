@@ -5,9 +5,11 @@ import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
   createColumnHelper,
   type SortingState,
+  type PaginationState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -17,22 +19,42 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { Property } from "@/types/database";
 
 const col = createColumnHelper<Property>();
 
-const buildColumns = (onLotClick: (lotNumber: number) => void) => [
+// Large sentinel used when the user selects "All"
+const ALL_PAGE_SIZE = 9999;
+const PAGE_SIZE_OPTIONS = [
+  { label: "10", value: 10 },
+  { label: "25", value: 25 },
+  { label: "50", value: 50 },
+  { label: "All", value: ALL_PAGE_SIZE },
+];
+
+const buildColumns = (onLotClick?: (lotNumber: number) => void) => [
   col.accessor("lot_number", {
     header: "Lot #",
-    cell: (info) => (
-      <button
-        className="font-medium underline-offset-2 hover:underline text-foreground"
-        onClick={() => onLotClick(info.getValue())}
-        aria-label={String(info.getValue())}
-      >
-        {info.getValue()}
-      </button>
-    ),
+    cell: (info) =>
+      onLotClick ? (
+        <button
+          className="font-medium underline-offset-2 hover:underline text-foreground"
+          onClick={() => onLotClick(info.getValue())}
+          aria-label={String(info.getValue())}
+        >
+          {info.getValue()}
+        </button>
+      ) : (
+        <span className="font-medium">{info.getValue()}</span>
+      ),
   }),
   col.accessor("last_name", {
     header: "Last Name",
@@ -93,62 +115,123 @@ const buildColumns = (onLotClick: (lotNumber: number) => void) => [
 interface PropertyTableProps {
   /** Pre-filtered list of properties to display. */
   lots: Property[];
-  /** Called with the lot_number when the lot # cell button is clicked. */
-  onLotClick: (lotNumber: number) => void;
+  /**
+   * Optional callback invoked with the lot_number when the lot # cell is clicked.
+   * When omitted the lot # renders as plain text.
+   */
+  onLotClick?: (lotNumber: number) => void;
 }
 
 /**
- * Sortable property table using TanStack Table.
- * Receives a pre-filtered `lots` array — all filtering is done upstream in MapView.
- * Default sort is lot_number ascending (matches server fetch order).
- *
- * @param props.lots - Pre-filtered list of properties to render.
- * @param props.onLotClick - Callback invoked with the lot_number when the lot # button is clicked.
+ * Sortable, paginated property table using TanStack Table.
+ * Receives a pre-filtered `lots` array — all filtering is done upstream.
+ * Default sort is lot_number ascending; default page size is 25.
  */
 export function PropertyTable({ lots, onLotClick }: PropertyTableProps) {
   const [sorting, setSorting] = useState<SortingState>([
     { id: "lot_number", desc: false },
   ]);
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   const table = useReactTable({
     data: lots,
     columns: buildColumns(onLotClick),
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    autoResetPageIndex: true,
   });
 
+  const { pageIndex, pageSize } = table.getState().pagination;
+  const totalRows = table.getFilteredRowModel().rows.length;
+  const firstRow = pageSize >= ALL_PAGE_SIZE ? 1 : pageIndex * pageSize + 1;
+  const lastRow = pageSize >= ALL_PAGE_SIZE ? totalRows : Math.min((pageIndex + 1) * pageSize, totalRows);
+
   return (
-    <Table>
-      <TableHeader>
-        {table.getHeaderGroups().map((hg) => (
-          <TableRow key={hg.id} className="hover:bg-transparent">
-            {hg.headers.map((header) => (
-              <TableHead
-                key={header.id}
-                className={header.column.getCanSort() ? "cursor-pointer select-none" : ""}
-                onClick={header.column.getToggleSortingHandler()}
-              >
-                {flexRender(header.column.columnDef.header, header.getContext())}
-                {header.column.getIsSorted() === "asc" && " ↑"}
-                {header.column.getIsSorted() === "desc" && " ↓"}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow key={row.id}>
-            {row.getVisibleCells().map((cell) => (
-              <TableCell key={cell.id}>
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="space-y-3">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((hg) => (
+            <TableRow key={hg.id} className="hover:bg-transparent">
+              {hg.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className={header.column.getCanSort() ? "cursor-pointer select-none" : ""}
+                  onClick={header.column.getToggleSortingHandler()}
+                >
+                  {flexRender(header.column.columnDef.header, header.getContext())}
+                  {header.column.getIsSorted() === "asc" && " ↑"}
+                  {header.column.getIsSorted() === "desc" && " ↓"}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      {/* Pagination controls */}
+      <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+        <span>
+          {totalRows === 0
+            ? "No results"
+            : `${firstRow}–${lastRow} of ${totalRows}`}
+        </span>
+
+        <div className="flex items-center gap-2">
+          <span className="hidden sm:inline">Rows per page</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(v) =>
+              setPagination({ pageIndex: 0, pageSize: Number(v) })
+            }
+          >
+            <SelectTrigger className="w-20 h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map(({ label, value }) => (
+                <SelectItem key={value} value={String(value)}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            ←
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            →
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }

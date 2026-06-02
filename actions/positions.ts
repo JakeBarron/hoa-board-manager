@@ -82,25 +82,36 @@ export async function updatePosition(
   if (emailChanged) {
     const serviceClient = createServiceClient();
 
-    // Find the auth user by old email
-    const { data: usersData } = await serviceClient.auth.admin.listUsers();
-    const authUser = usersData?.users.find((u) => u.email === oldEmail);
+    // Find the auth user by old email (case-insensitive to match Supabase's storage)
+    const { data: usersData, error: listError } =
+      await serviceClient.auth.admin.listUsers();
+    if (listError) {
+      return `Email updated in DB but could not list auth users: ${listError.message}. Update the auth user manually in the Supabase dashboard.`;
+    }
 
-    if (authUser) {
-      const { error: authUpdateError } = await serviceClient.auth.admin.updateUserById(
-        authUser.id,
-        { email: trimmedEmail }
-      );
-      if (authUpdateError) {
-        // positions.email was already updated — surface this clearly
-        return `Email updated in DB but Supabase auth update failed: ${authUpdateError.message}. Update the auth user manually in the Supabase dashboard.`;
-      }
+    const authUser = usersData?.users.find(
+      (u) => u.email?.toLowerCase() === oldEmail.toLowerCase()
+    );
+    if (!authUser) {
+      return `Email updated in DB but no Supabase auth user found for ${oldEmail}. Update the auth user manually in the Supabase dashboard.`;
+    }
 
-      const siteUrl =
-        process.env.NEXT_PUBLIC_SITE_URL ?? "https://board.eastspringlake.com";
-      await serviceClient.auth.resetPasswordForEmail(trimmedEmail, {
-        redirectTo: `${siteUrl}/login`,
+    const { error: authUpdateError } =
+      await serviceClient.auth.admin.updateUserById(authUser.id, {
+        email: trimmedEmail,
       });
+    if (authUpdateError) {
+      return `Email updated in DB but Supabase auth update failed: ${authUpdateError.message}. Update the auth user manually in the Supabase dashboard.`;
+    }
+
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://board.eastspringlake.com";
+    const { error: resetError } = await serviceClient.auth.resetPasswordForEmail(
+      trimmedEmail,
+      { redirectTo: `${siteUrl}/login` }
+    );
+    if (resetError) {
+      return `Email updated but password reset email failed to send: ${resetError.message}. Send a reset manually from the Supabase dashboard.`;
     }
   }
 

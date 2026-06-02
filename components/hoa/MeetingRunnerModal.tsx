@@ -20,6 +20,8 @@ import {
   closeMotion,
 } from "@/actions/motions";
 import { createActionItem } from "@/actions/todos";
+import { formatPersonName } from "@/lib/positions";
+import type { PositionName } from "@/types/database";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,6 +30,8 @@ interface Position {
   id: string;
   name: string;
   role: string;
+  is_voting_member: boolean;
+  display_name: string | null;
 }
 
 /** Vote choice for a single member in a motion vote panel. */
@@ -50,7 +54,7 @@ type ModalView =
   | "export";
 
 export interface MeetingRunnerModalProps {
-  /** All 8 board positions */
+  /** All non-chair board positions (treasurer included for attendance; voting members filtered internally) */
   positions: Position[];
   /** UUID of the logged-in user's position */
   currentPositionId: string;
@@ -98,26 +102,14 @@ function useElapsedTimer(startedAt: string | null): string {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Returns the human-readable display name for a position.
- * Capitalises the first letter of each word.
- *
- * @param name - Raw position name from the DB (e.g. "vp", "president")
- */
-function displayName(name: string): string {
-  return name
-    .split("_")
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ");
-}
-
-/**
  * Builds the vote result sentence inserted into the minutes editor.
+ * Names must be pre-formatted by the caller using formatPersonName().
  * Format: "Motion to [title][: description] — called by [caller], seconded by [seconder]. [Passed/Failed] X–Y–Z ([narrative])."
  *
  * @param title        - Motion title
- * @param callerName   - Name of the proposer
- * @param seconderName - Name of the seconder
- * @param votes        - Full vote list with names and choices
+ * @param callerName   - Pre-formatted name of the proposer (e.g. "President Jake Barron")
+ * @param seconderName - Pre-formatted name of the seconder
+ * @param votes        - Full vote list with pre-formatted names and choices
  * @param description  - Optional motion description included after the title
  */
 function buildVoteResultText(
@@ -138,16 +130,16 @@ function buildVoteResultText(
   } else {
     const parts: string[] = [];
     if (nays.length > 0) {
-      parts.push(`Nay: ${nays.map((v) => displayName(v.name)).join(", ")}.`);
+      parts.push(`Nay: ${nays.map((v) => v.name).join(", ")}.`);
     }
     if (absents.length > 0) {
-      parts.push(`Absent: ${absents.map((v) => displayName(v.name)).join(", ")}.`);
+      parts.push(`Absent: ${absents.map((v) => v.name).join(", ")}.`);
     }
     narrative = parts.join(" ");
   }
 
   const titlePart = description ? `${title}: ${description}` : title;
-  return `Motion to ${titlePart} — called by ${displayName(callerName)}, seconded by ${displayName(seconderName)}. ${passed ? "Passed" : "Failed"} ${yays.length}–${nays.length}–${absents.length} (${narrative})`;
+  return `Motion to ${titlePart} — called by ${callerName}, seconded by ${seconderName}. ${passed ? "Passed" : "Failed"} ${yays.length}–${nays.length}–${absents.length} (${narrative})`;
 }
 
 // ─── Sub-panels ───────────────────────────────────────────────────────────────
@@ -200,7 +192,7 @@ function AttendancePanel({
                   : "bg-background text-muted-foreground"
               }`}
             >
-              <span className="font-medium">{displayName(p.name)}</span>
+              <span className="font-medium">{formatPersonName(p.name as PositionName, p.display_name)}</span>
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
                   present
@@ -285,7 +277,7 @@ function CallToOrderPanel({
           >
             {presentPositions.map((p) => (
               <option key={p.id} value={p.id}>
-                {displayName(p.name)}
+                {formatPersonName(p.name as PositionName, p.display_name)}
               </option>
             ))}
           </select>
@@ -303,7 +295,7 @@ function CallToOrderPanel({
           >
             {secondOptions.map((p) => (
               <option key={p.id} value={p.id}>
-                {displayName(p.name)}
+                {formatPersonName(p.name as PositionName, p.display_name)}
               </option>
             ))}
           </select>
@@ -400,14 +392,23 @@ function VotePanel({
 
         await closeMotion(motionId, passed, quorumMet);
 
-        const proposerName =
-          positions.find((p) => p.id === proposedBy)?.name ?? proposedBy;
-        const seconderName =
-          positions.find((p) => p.id === secondedBy)?.name ?? secondedBy;
-        const votesWithNames = votes.map((v) => ({
-          name: positions.find((p) => p.id === v.positionId)?.name ?? v.positionId,
-          vote: v.vote,
-        }));
+        const proposerPos = positions.find((p) => p.id === proposedBy);
+        const seconderPos = positions.find((p) => p.id === secondedBy);
+        const proposerName = proposerPos
+          ? formatPersonName(proposerPos.name as PositionName, proposerPos.display_name)
+          : proposedBy;
+        const seconderName = seconderPos
+          ? formatPersonName(seconderPos.name as PositionName, seconderPos.display_name)
+          : secondedBy;
+        const votesWithNames = votes.map((v) => {
+          const pos = positions.find((p) => p.id === v.positionId);
+          return {
+            name: pos
+              ? formatPersonName(pos.name as PositionName, pos.display_name)
+              : v.positionId,
+            vote: v.vote,
+          };
+        });
 
         const resultText = buildVoteResultText(
           title.trim(),
@@ -479,7 +480,7 @@ function VotePanel({
             >
               {presentPositions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {displayName(p.name)}
+                  {formatPersonName(p.name as PositionName, p.display_name)}
                 </option>
               ))}
             </select>
@@ -497,7 +498,7 @@ function VotePanel({
             >
               {secondOptions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {displayName(p.name)}
+                  {formatPersonName(p.name as PositionName, p.display_name)}
                 </option>
               ))}
             </select>
@@ -515,7 +516,7 @@ function VotePanel({
                   key={p.id}
                   className="flex items-center justify-between px-4 py-2.5"
                 >
-                  <span className="text-sm font-medium">{displayName(p.name)}</span>
+                  <span className="text-sm font-medium">{formatPersonName(p.name as PositionName, p.display_name)}</span>
                   <div className="flex gap-1">
                     {(["yay", "nay", "absent"] as VoteChoice[]).map((choice) => (
                       <button
@@ -596,10 +597,13 @@ function ActionItemPanel({
     startTransition(async () => {
       try {
         await createActionItem(assignee, description.trim(), meetingId, dueDate || undefined);
-        const assigneeName = positions.find((p) => p.id === assignee)?.name ?? assignee;
+        const assigneePos = positions.find((p) => p.id === assignee);
+        const assigneeLabel = assigneePos
+          ? formatPersonName(assigneePos.name as PositionName, assigneePos.display_name)
+          : assignee;
         setSuccess(true);
         setTimeout(() => {
-          onCreated(assigneeName, description.trim());
+          onCreated(assigneeLabel, description.trim());
         }, 800);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to create action item.");
@@ -646,7 +650,7 @@ function ActionItemPanel({
             >
               {positions.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {displayName(p.name)}
+                  {formatPersonName(p.name as PositionName, p.display_name)}
                 </option>
               ))}
             </select>
@@ -730,7 +734,7 @@ function AdjournPanel({
           >
             {presentPositions.map((p) => (
               <option key={p.id} value={p.id}>
-                {displayName(p.name)}
+                {formatPersonName(p.name as PositionName, p.display_name)}
               </option>
             ))}
           </select>
@@ -748,7 +752,7 @@ function AdjournPanel({
           >
             {secondOptions.map((p) => (
               <option key={p.id} value={p.id}>
-                {displayName(p.name)}
+                {formatPersonName(p.name as PositionName, p.display_name)}
               </option>
             ))}
           </select>
@@ -1001,6 +1005,8 @@ export function MeetingRunnerModal({
   driveFolder,
   hoaName,
 }: MeetingRunnerModalProps) {
+  const votingPositions = positions.filter((p) => p.is_voting_member);
+
   const initialView: ModalView =
     existingMeeting?.status === "in_progress" ? "running" : "attendance";
 
@@ -1069,7 +1075,7 @@ export function MeetingRunnerModal({
   };
 
   const handleActionItemCreated = (positionName: string, title: string) => {
-    const note = `Action item assigned to ${displayName(positionName)}: ${title}`;
+    const note = `Action item assigned to ${positionName}: ${title}`;
     const newContent = minutesContent
       ? `${minutesContent}<p>${note}</p>`
       : `<p>${note}</p>`;
@@ -1161,7 +1167,7 @@ export function MeetingRunnerModal({
 
         {view === "callToOrder" && (
           <CallToOrderPanel
-            positions={positions}
+            positions={votingPositions}
             presentIds={presentIds}
             onConfirm={handleCallToOrder}
             isPending={isPending}
@@ -1186,7 +1192,7 @@ export function MeetingRunnerModal({
 
         {view === "voting" && (
           <VotePanel
-            positions={positions}
+            positions={votingPositions}
             presentIds={presentIds}
             currentPositionId={currentPositionId}
             meetingId={meetingId}
@@ -1206,7 +1212,7 @@ export function MeetingRunnerModal({
 
         {view === "adjourn" && (
           <AdjournPanel
-            positions={positions}
+            positions={votingPositions}
             presentIds={presentIds}
             onAdjourn={handleAdjourn}
             isPending={isPending}

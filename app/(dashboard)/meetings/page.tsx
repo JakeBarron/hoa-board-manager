@@ -31,7 +31,7 @@ export default async function MeetingsPage() {
         .single(),
       supabase
         .from("positions")
-        .select("id, name, role")
+        .select("id, name, role, is_voting_member, display_name")
         .order("name", { ascending: true }),
       supabase
         .from("meetings")
@@ -66,10 +66,14 @@ export default async function MeetingsPage() {
   const canSchedule = canEditAll(position.role);
   const canRun = canEditAll(position.role);
 
-  const allPositions = (allPositionsResult.data ?? []) as Array<{
+  const allPositions = (allPositionsResult.data ?? []).filter(
+    (p) => p.role !== "chair"
+  ) as Array<{
     id: string;
     name: string;
     role: string;
+    is_voting_member: boolean;
+    display_name: string | null;
   }>;
 
   const upcoming = (upcomingResult.data ?? []) as Pick<

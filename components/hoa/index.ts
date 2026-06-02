@@ -17,5 +17,6 @@ export type { InlineDateInputProps } from "./InlineDateInput";
 export { ScheduleMeetingModal } from "./ScheduleMeetingModal";
 export type { ScheduleMeetingModalProps } from "./ScheduleMeetingModal";
 export { MapView } from "./MapView";
+export { PropertiesView } from "./PropertiesView";
 export { NeighborhoodMap } from "./NeighborhoodMap";
 export { PropertyTable } from "./PropertyTable";

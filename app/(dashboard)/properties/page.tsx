@@ -3,19 +3,18 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isChair } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
-import { MapView } from "@/components/hoa/MapView";
+import { PropertiesView } from "@/components/hoa/PropertiesView";
 
 export const metadata = {
-  title: "Map — HOA Board",
+  title: "Properties — HOA Board",
 };
 
 /**
- * Neighborhood lot map page.
- * Fetches all properties server-side and passes them to MapView for client-side interaction.
- * Restricted to voting members (president, officer, member). Chairs are redirected.
- * noStore() prevents Next.js from caching this response across sessions.
+ * Properties table page.
+ * Fetches all properties server-side and passes them to PropertiesView for
+ * client-side filtering. Restricted to voting members; chairs are redirected.
  */
-export default async function MapPage() {
+export default async function PropertiesPage() {
   noStore();
 
   const supabase = await createClient();
@@ -44,8 +43,11 @@ export default async function MapPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Map" subtitle="Interactive neighborhood lot map" />
-      <MapView lots={lots} />
+      <PageHeader
+        title="Properties"
+        subtitle="Neighborhood lots and membership information"
+      />
+      <PropertiesView lots={lots} />
     </div>
   );
 }

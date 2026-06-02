@@ -62,8 +62,9 @@ describe("PropertyTable", () => {
     expect(screen.getByText("Yes")).toBeInTheDocument();
   });
 
-  it("renders an empty table body when no lots are provided", () => {
+  it("renders no data rows when no lots are provided", () => {
     render(<PropertyTable lots={[]} onLotClick={() => {}} />);
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^\d+$/ })).not.toBeInTheDocument();
+    expect(screen.getByText("No results")).toBeInTheDocument();
   });
 });

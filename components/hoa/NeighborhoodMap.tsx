@@ -3,7 +3,7 @@
 import { useRef, useState, useCallback, useEffect, type WheelEvent, type MouseEvent } from "react";
 import { X, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import type { Property } from "@/types/database";
-import { LOT_POLYGONS } from "@/lib/map-polygons";
+import { LOT_POLYGONS, STREET_SHAPES, POND_SHAPES } from "@/lib/map-polygons";
 
 // ---------------------------------------------------------------------------
 // Colors
@@ -225,6 +225,16 @@ export function NeighborhoodMap({
           >
             <rect width="1117" height="845" fill="#f1f5f9" />
 
+            {/* Street polygons — rendered behind lots */}
+            {STREET_SHAPES.map((shape, i) => (
+              <polygon key={`street-${i}`} points={shape.points} fill="#e2e8f0" stroke="#cbd5e1" strokeWidth={0.5} />
+            ))}
+
+            {/* Pond polygons — rendered behind lots */}
+            {POND_SHAPES.map((shape, i) => (
+              <polygon key={`pond-${i}`} points={shape.points} fill="#bae6fd" stroke="#7dd3fc" strokeWidth={0.5} />
+            ))}
+
             {LOT_POLYGONS.map((lot, i) => {
               if (lot.lotNumber === null) {
                 return (
@@ -270,6 +280,36 @@ export function NeighborhoodMap({
                 </g>
               );
             })}
+
+            {/* Street + pond labels — second pass so they render on top of all polygons */}
+            {STREET_SHAPES.map((shape, i) =>
+              shape.label ? (
+                <text
+                  key={`street-label-${i}`}
+                  x={shape.labelX} y={shape.labelY}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fontSize="5" fill="#475569"
+                  stroke="white" strokeWidth={2} paintOrder="stroke"
+                  className="select-none pointer-events-none italic"
+                >
+                  {shape.label}
+                </text>
+              ) : null
+            )}
+            {POND_SHAPES.map((shape, i) =>
+              shape.label ? (
+                <text
+                  key={`pond-label-${i}`}
+                  x={shape.labelX} y={shape.labelY}
+                  textAnchor="middle" dominantBaseline="middle"
+                  fontSize="6" fill="#0369a1"
+                  stroke="white" strokeWidth={2} paintOrder="stroke"
+                  className="select-none pointer-events-none italic"
+                >
+                  {shape.label}
+                </text>
+              ) : null
+            )}
           </svg>
         </div>
 

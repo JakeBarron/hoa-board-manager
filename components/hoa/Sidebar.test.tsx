@@ -10,6 +10,8 @@ const makePosition = (overrides: Partial<Position>): Position => ({
   name: "president",
   email: "president@yourhoa.com",
   role: "president",
+  is_voting_member: true,
+  display_name: null,
   created_at: "2026-01-01T00:00:00Z",
   ...overrides,
 });

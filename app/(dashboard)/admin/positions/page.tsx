@@ -3,22 +3,24 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { isChair } from "@/lib/permissions";
 import { SectionCard } from "@/components/hoa/SectionCard";
-import type { Position } from "@/types/database";
+import { PositionEditRow } from "./PositionEditRow";
+import type { PositionName } from "@/types/database";
 
 export const metadata = { title: "Manage Positions — HOA Board" };
 
 /**
  * Admin page — president only.
- * Lists all positions and their current assigned emails.
- * Full reassignment form comes in a future iteration.
+ * Lists all positions with inline edit forms for display name and email.
+ * Changing an email auto-updates the Supabase auth user and sends a password reset.
  */
 export default async function ManagePositionsPage() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Verify president role before rendering
   const { data: positionData } = await supabase
     .from("positions")
     .select("name, role")
@@ -31,27 +33,32 @@ export default async function ManagePositionsPage() {
 
   const { data: positions } = await supabase
     .from("positions")
-    .select("*")
+    .select("id, name, role, email, display_name")
+    .neq("role", "chair")
     .order("name");
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Manage Positions"
-        subtitle="Reassign board positions when members change"
+        subtitle="Update who holds each board position"
       />
-      <SectionCard title="Current Board" description="Update emails to transfer positions to new members">
-        <div className="divide-y">
-          {(positions ?? []).map((pos: Position) => (
-            <div key={pos.id} className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-sm font-medium capitalize">
-                  {pos.name === "vp" ? "Vice President" : pos.name}
-                </p>
-                <p className="text-xs text-muted-foreground">{pos.email}</p>
-              </div>
-              <span className="text-xs text-muted-foreground">Edit coming soon</span>
-            </div>
+      <SectionCard
+        title="Board Members"
+        description="Set a display name so it appears in meeting minutes. Change the email to reassign a position — a password reset will be sent automatically."
+      >
+        <div className="divide-y divide-border">
+          {(positions ?? []).map((pos) => (
+            <PositionEditRow
+              key={pos.id}
+              position={{
+                id: pos.id,
+                name: pos.name as PositionName,
+                role: pos.role,
+                email: pos.email,
+                display_name: pos.display_name,
+              }}
+            />
           ))}
         </div>
       </SectionCard>

@@ -17,6 +17,7 @@ import type {
   PositionName,
   Todo,
 } from "@/types/database";
+import { POSITION_LABELS, formatPersonName } from "@/lib/positions";
 
 export const metadata = { title: "Meeting Details — HOA Board" };
 
@@ -24,19 +25,8 @@ export const metadata = { title: "Meeting Details — HOA Board" };
 
 type BoardPositionName = Extract<
   PositionName,
-  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social"
+  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social" | "grounds"
 >;
-
-const POSITION_LABELS: Record<BoardPositionName, string> = {
-  president: "President",
-  vp: "Vice President",
-  secretary: "Secretary",
-  treasurer: "Treasurer",
-  pool: "Pool",
-  membership: "Membership",
-  tennis: "Tennis",
-  social: "Social",
-};
 
 const POSITION_ORDER: BoardPositionName[] = [
   "president",
@@ -47,6 +37,7 @@ const POSITION_ORDER: BoardPositionName[] = [
   "membership",
   "tennis",
   "social",
+  "grounds",
 ];
 
 const VOTE_LABELS: Record<VoteChoice, string> = {
@@ -171,7 +162,7 @@ export default async function MeetingDetailPage({
       )
       .eq("id", id)
       .single(),
-    supabase.from("positions").select("id, name"),
+    supabase.from("positions").select("id, name, display_name"),
     supabase
       .from("motions")
       .select(
@@ -206,6 +197,7 @@ export default async function MeetingDetailPage({
   const allPositions = (allPositionsResult.data ?? []) as {
     id: string;
     name: PositionName;
+    display_name: string | null;
   }[];
 
   const motions = (motionsResult.data ?? []) as Pick<
@@ -236,6 +228,14 @@ export default async function MeetingDetailPage({
 
   const positionNameById = new Map(
     allPositions.map((p) => [p.id, p.name as PositionName])
+  );
+
+  // Maps position ID → formatted display string ("Vice President Jake Barron" or "Vice President")
+  const positionFormatById = new Map(
+    allPositions.map((p) => [
+      p.id,
+      formatPersonName(p.name, p.display_name),
+    ])
   );
 
   // Fetch votes for all motions in one query
@@ -272,9 +272,9 @@ export default async function MeetingDetailPage({
 
   const isOfficerOrAbove = canEditAll(currentPosition.role);
 
-  const calledByName = positionNameById.get(meeting.called_by);
-  const secondedByName = meeting.seconded_by
-    ? positionNameById.get(meeting.seconded_by)
+  const calledByLabel = positionFormatById.get(meeting.called_by) ?? "Unknown";
+  const secondedByLabel = meeting.seconded_by
+    ? (positionFormatById.get(meeting.seconded_by) ?? "—")
     : null;
 
   const startedTime = formatTime(meeting.started_at);
@@ -302,14 +302,8 @@ export default async function MeetingDetailPage({
       {/* ── Meeting Info ──────────────────────────────────────────────────── */}
       <SectionCard title="Meeting Info">
         <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 text-sm">
-          <InfoRow
-            label="Called to order by"
-            value={calledByName ? POSITION_LABELS[calledByName as BoardPositionName] : "Unknown"}
-          />
-          <InfoRow
-            label="Seconded by"
-            value={secondedByName ? POSITION_LABELS[secondedByName as BoardPositionName] : "—"}
-          />
+          <InfoRow label="Called to order by" value={calledByLabel} />
+          <InfoRow label="Seconded by" value={secondedByLabel ?? "—"} />
           <InfoRow label="Started" value={startedTime ?? "Not yet started"} />
           <InfoRow
             label="Adjourned"
@@ -343,7 +337,9 @@ export default async function MeetingDetailPage({
                   key={posName}
                   className="flex items-center justify-between py-2 text-sm"
                 >
-                  <span className="font-medium">{POSITION_LABELS[posName]}</span>
+                  <span className="font-medium">
+                    {pos ? (positionFormatById.get(pos.id) ?? POSITION_LABELS[posName]) : POSITION_LABELS[posName]}
+                  </span>
                   <span
                     className={
                       isPresent
@@ -377,9 +373,9 @@ export default async function MeetingDetailPage({
         ) : (
           motions.map((motion) => {
             const votes = votesByMotionId.get(motion.id) ?? [];
-            const proposedByName = positionNameById.get(motion.proposed_by);
-            const motionSecondedByName = motion.seconded_by
-              ? positionNameById.get(motion.seconded_by)
+            const proposedByLabel = positionFormatById.get(motion.proposed_by);
+            const motionSecondedByLabel = motion.seconded_by
+              ? positionFormatById.get(motion.seconded_by)
               : null;
             const tally = tallyVotes(votes, motion.status);
 
@@ -391,19 +387,19 @@ export default async function MeetingDetailPage({
               >
                 <div className="space-y-3">
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                    {proposedByName && (
+                    {proposedByLabel && (
                       <span className="text-muted-foreground">
                         Proposed by{" "}
                         <span className="font-medium text-foreground">
-                          {POSITION_LABELS[proposedByName as BoardPositionName]}
+                          {proposedByLabel}
                         </span>
                       </span>
                     )}
-                    {motionSecondedByName && (
+                    {motionSecondedByLabel && (
                       <span className="text-muted-foreground">
                         Seconded by{" "}
                         <span className="font-medium text-foreground">
-                          {POSITION_LABELS[motionSecondedByName as BoardPositionName]}
+                          {motionSecondedByLabel}
                         </span>
                       </span>
                     )}
@@ -441,7 +437,9 @@ export default async function MeetingDetailPage({
                               key={posName}
                               className="flex items-center justify-between px-3 py-1.5"
                             >
-                              <span>{POSITION_LABELS[posName]}</span>
+                              <span>
+                                {pos ? (positionFormatById.get(pos.id) ?? POSITION_LABELS[posName]) : POSITION_LABELS[posName]}
+                              </span>
                               <VoteChip vote={voteChoice} />
                             </li>
                           );
@@ -470,7 +468,7 @@ export default async function MeetingDetailPage({
         ) : (
           <ul className="divide-y divide-border text-sm">
             {actionItems.map((item) => {
-              const assigneeName = positionNameById.get(item.position_id);
+              const assigneeLabel = positionFormatById.get(item.position_id);
               return (
                 <li
                   key={item.id}
@@ -486,9 +484,9 @@ export default async function MeetingDetailPage({
                     >
                       {item.title}
                     </p>
-                    {assigneeName && (
+                    {assigneeLabel && (
                       <p className="text-xs text-muted-foreground">
-                        {POSITION_LABELS[assigneeName as BoardPositionName]}
+                        {assigneeLabel}
                       </p>
                     )}
                   </div>

@@ -1,21 +1,6 @@
 import type { PositionName } from "@/types/database";
 import { formatMeetingDate } from "@/lib/dates";
-
-const POSITION_LABELS: Record<PositionName, string> = {
-  president: "President",
-  vp: "Vice President",
-  secretary: "Secretary",
-  treasurer: "Treasurer",
-  pool: "Pool",
-  membership: "Membership",
-  tennis: "Tennis",
-  social: "Social",
-  web: "Web Committee",
-  architecture: "Architecture Review",
-  welcoming: "Welcoming Committee",
-  clubhouse: "Clubhouse Committee",
-  cra: "CRA Committee",
-};
+import { POSITION_LABELS } from "@/lib/positions";
 
 interface ReminderParams {
   meetingDate: string;

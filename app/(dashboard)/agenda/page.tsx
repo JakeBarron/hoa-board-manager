@@ -9,35 +9,25 @@ import { ReminderSection } from "./ReminderSection";
 import { formatMeetingDate, getUpcomingMondays } from "@/lib/dates";
 import { buildReminderMailto } from "@/lib/reminder";
 import type { PositionName } from "@/types/database";
+import { POSITION_LABELS } from "@/lib/positions";
 
 export const metadata = { title: "Meeting Agenda — HOA Board" };
 
 type BoardPositionName = Extract<PositionName,
   "president" | "vp" | "secretary" | "treasurer" |
-  "pool" | "membership" | "tennis" | "social">;
+  "pool" | "membership" | "tennis" | "social" | "grounds">;
 
 type ChairPositionName = Extract<PositionName,
   "web" | "architecture" | "welcoming" | "clubhouse" | "cra">;
 
 const POSITION_ORDER: BoardPositionName[] = [
   "president", "vp", "secretary", "treasurer",
-  "pool", "membership", "tennis", "social",
+  "pool", "membership", "tennis", "social", "grounds",
 ];
 
 const COMMITTEE_ORDER: ChairPositionName[] = [
   "web", "architecture", "welcoming", "clubhouse", "cra",
 ];
-
-const POSITION_LABELS: Record<BoardPositionName, string> = {
-  president: "President",
-  vp: "Vice President",
-  secretary: "Secretary",
-  treasurer: "Treasurer",
-  pool: "Pool",
-  membership: "Membership",
-  tennis: "Tennis",
-  social: "Social",
-};
 
 const COMMITTEE_LABELS: Record<ChairPositionName, string> = {
   web: "Web Committee",

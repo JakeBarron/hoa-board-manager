@@ -19,6 +19,8 @@ export type Database = {
           name: PositionName;
           email: string;
           role: PositionRole;
+          is_voting_member: boolean;
+          display_name: string | null;
           created_at: string;
         };
         Insert: {
@@ -26,6 +28,8 @@ export type Database = {
           name: PositionName;
           email: string;
           role: PositionRole;
+          is_voting_member?: boolean;
+          display_name?: string | null;
           created_at?: string;
         };
         Update: {
@@ -33,6 +37,8 @@ export type Database = {
           name?: PositionName;
           email?: string;
           role?: PositionRole;
+          is_voting_member?: boolean;
+          display_name?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -478,6 +484,7 @@ export type PositionName =
   | "membership"
   | "tennis"
   | "social"
+  | "grounds"
   | "web"
   | "architecture"
   | "welcoming"

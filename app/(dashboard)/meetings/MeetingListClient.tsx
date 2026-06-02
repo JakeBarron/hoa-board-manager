@@ -15,6 +15,8 @@ interface Position {
   id: string;
   name: string;
   role: string;
+  is_voting_member: boolean;
+  display_name: string | null;
 }
 
 interface MeetingListClientProps {

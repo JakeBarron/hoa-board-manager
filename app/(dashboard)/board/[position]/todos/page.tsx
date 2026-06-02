@@ -6,21 +6,12 @@ import { SectionCard } from "@/components/hoa/SectionCard";
 import { TodoList } from "@/components/hoa/TodoList";
 import type { PositionName, Todo } from "@/types/database";
 
+import { POSITION_LABELS } from "@/lib/positions";
+
 type BoardPositionName = Extract<
   PositionName,
-  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social"
+  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social" | "grounds"
 >;
-
-const POSITION_LABELS: Record<BoardPositionName, string> = {
-  president:  "President",
-  vp:         "Vice President",
-  secretary:  "Secretary",
-  treasurer:  "Treasurer",
-  pool:       "Pool",
-  membership: "Membership",
-  tennis:     "Tennis",
-  social:     "Social",
-};
 
 interface Props {
   params: Promise<{ position: string }>;

@@ -8,21 +8,12 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import type { MeetingMinutes, PositionName } from "@/types/database";
 
+import { POSITION_LABELS } from "@/lib/positions";
+
 type BoardPositionName = Extract<
   PositionName,
-  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social"
+  "president" | "vp" | "secretary" | "treasurer" | "pool" | "membership" | "tennis" | "social" | "grounds"
 >;
-
-const POSITION_LABELS: Record<BoardPositionName, string> = {
-  president:  "President",
-  vp:         "Vice President",
-  secretary:  "Secretary",
-  treasurer:  "Treasurer",
-  pool:       "Pool",
-  membership: "Membership",
-  tennis:     "Tennis",
-  social:     "Social",
-};
 
 interface Props {
   params: Promise<{ position: string }>;

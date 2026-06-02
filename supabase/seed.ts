@@ -47,6 +47,7 @@ const positions: Array<{
   { name: "membership",  role: "member",    email: "membership@yourhoa.com",   password: "ChangeMe123!" },
   { name: "tennis",      role: "member",    email: "tennis@yourhoa.com",       password: "ChangeMe123!" },
   { name: "social",      role: "member",    email: "social@yourhoa.com",       password: "ChangeMe123!" },
+  { name: "grounds",     role: "member",    email: "grounds@yourhoa.com",      password: "ChangeMe123!" },
   // committee chairs — pre-meeting updates for their section only
   { name: "web",          role: "chair",    email: "web@yourhoa.com",          password: "ChangeMe123!" },
   { name: "architecture", role: "chair",    email: "architecture@yourhoa.com", password: "ChangeMe123!" },
@@ -83,6 +84,7 @@ const seedPosition = async (pos: (typeof positions)[number]): Promise<void> => {
     name: pos.name,
     email: pos.email,
     role: pos.role,
+    is_voting_member: pos.role !== "chair",
   });
 
   if (dbError) {

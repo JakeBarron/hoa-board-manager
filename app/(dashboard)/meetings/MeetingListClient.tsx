@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ScheduleMeetingModal } from "@/components/hoa/ScheduleMeetingModal";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
 import { MeetingRunnerModal } from "@/components/hoa/MeetingRunnerModal";
-import { startOrResumeMeeting } from "@/actions/meetings";
 import { MeetingRow } from "./MeetingRow";
 import type { Meeting } from "@/types/database";
 
@@ -28,7 +27,7 @@ interface MeetingListClientProps {
   positions: Position[];
   /** UUID of the logged-in user's position */
   currentPositionId: string;
-  /** An existing open meeting for today, if any */
+  /** Any currently in-progress meeting — used to detect conflicts when starting a new one */
   existingMeeting: { id: string; status: "pending" | "in_progress" } | null;
   /** Upcoming meetings (not yet adjourned, meeting_date >= today) */
   upcoming: Pick<Meeting, "id" | "meeting_date" | "status">[];
@@ -45,17 +44,18 @@ interface MeetingListClientProps {
 /**
  * Client wrapper for the meetings list page.
  *
- * Handles modal open/close state and the startOrResumeMeeting call so the
- * server page can stay a pure data-fetching Server Component.
+ * Handles modal open/close state so the server page can stay a pure
+ * data-fetching Server Component. "Start Meeting" lives on each pending row;
+ * clicking it opens the runner modal directly (no server call needed).
  *
- * @param canRun             - Whether the current user can run meetings
- * @param canSchedule        - Whether the current user can schedule meetings
- * @param positions          - All board positions (passed through to the modal)
- * @param currentPositionId  - Current user's position UUID
- * @param existingMeeting    - Any open meeting found for today
- * @param upcoming                - Upcoming meeting rows
- * @param past                    - Past meeting rows
- * @param defaultScheduleDate     - ISO date pre-filled in the schedule modal (next available cadence date)
+ * @param canRun              - Whether the current user can run meetings
+ * @param canSchedule         - Whether the current user can schedule meetings
+ * @param positions           - All board positions (passed through to the modal)
+ * @param currentPositionId   - Current user's position UUID
+ * @param existingMeeting     - Any currently in-progress meeting, used as a conflict guard
+ * @param upcoming            - Upcoming meeting rows
+ * @param past                - Past meeting rows
+ * @param defaultScheduleDate - ISO date pre-filled in the schedule modal (next available cadence date)
  */
 export function MeetingListClient({
   canRun,
@@ -72,23 +72,28 @@ export function MeetingListClient({
   const [modalMeetingId, setModalMeetingId] = useState<string | null>(null);
   const [resolvedExistingMeeting, setResolvedExistingMeeting] =
     useState(existingMeeting);
-  const [isPending, startTransition] = useTransition();
   const [startError, setStartError] = useState<string | null>(null);
+  const [startErrorRowId, setStartErrorRowId] = useState<string | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  const handleStartMeeting = () => {
+  const handleStartMeeting = (
+    meetingId: string,
+    meetingStatus: "pending" | "in_progress"
+  ) => {
     setStartError(null);
-    startTransition(async () => {
-      try {
-        const result = await startOrResumeMeeting(currentPositionId);
-        setResolvedExistingMeeting(result);
-        setModalMeetingId(result.id);
-      } catch (err) {
-        setStartError(
-          err instanceof Error ? err.message : "Failed to start meeting."
-        );
-      }
-    });
+    setStartErrorRowId(null);
+    if (
+      resolvedExistingMeeting?.status === "in_progress" &&
+      resolvedExistingMeeting.id !== meetingId
+    ) {
+      setStartError(
+        "A meeting is already in progress — adjourn it before starting a new one."
+      );
+      setStartErrorRowId(meetingId);
+      return;
+    }
+    setResolvedExistingMeeting({ id: meetingId, status: meetingStatus });
+    setModalMeetingId(meetingId);
   };
 
   const handleClose = () => {
@@ -103,34 +108,16 @@ export function MeetingListClient({
           subtitle="Board meeting schedule"
           action={
             canSchedule ? (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowScheduleModal(true)}
-                >
-                  Schedule meeting
-                </Button>
-                {canRun && (
-                  <Button
-                    size="sm"
-                    variant="default"
-                    onClick={handleStartMeeting}
-                    disabled={isPending}
-                  >
-                    {isPending ? "Starting…" : "Start Meeting"}
-                  </Button>
-                )}
-              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowScheduleModal(true)}
+              >
+                Schedule meeting
+              </Button>
             ) : undefined
           }
         />
-
-        {startError && (
-          <p role="alert" className="text-xs text-destructive">
-            {startError}
-          </p>
-        )}
 
         <SectionCard title="Upcoming">
           {upcoming.length === 0 ? (
@@ -145,7 +132,14 @@ export function MeetingListClient({
           ) : (
             <ul className="divide-y divide-border">
               {upcoming.map((m) => (
-                <MeetingRow key={m.id} meeting={m} canSchedule={canSchedule} />
+                <MeetingRow
+                  key={m.id}
+                  meeting={m}
+                  canSchedule={canSchedule}
+                  canRun={canRun}
+                  onStartMeeting={handleStartMeeting}
+                  startError={startErrorRowId === m.id ? startError ?? undefined : undefined}
+                />
               ))}
             </ul>
           )}

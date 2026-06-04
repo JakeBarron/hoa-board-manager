@@ -35,6 +35,73 @@ describe("MeetingRow", () => {
     expect(screen.queryByRole("button", { name: /cancel/i })).not.toBeInTheDocument();
   });
 
+  describe("Start Meeting button", () => {
+    it("shows Start Meeting button when canRun is true and meeting is pending", () => {
+      render(
+        <MeetingRow
+          meeting={pendingMeeting}
+          canSchedule={false}
+          canRun={true}
+          onStartMeeting={jest.fn()}
+        />
+      );
+      expect(screen.getByRole("button", { name: /start meeting/i })).toBeInTheDocument();
+    });
+
+    it("does not show Start Meeting button when canRun is false", () => {
+      render(
+        <MeetingRow
+          meeting={pendingMeeting}
+          canSchedule={false}
+          canRun={false}
+          onStartMeeting={jest.fn()}
+        />
+      );
+      expect(screen.queryByRole("button", { name: /start meeting/i })).not.toBeInTheDocument();
+    });
+
+    it("does not show Start Meeting button for adjourned meetings", () => {
+      render(
+        <MeetingRow
+          meeting={adjournedMeeting}
+          canSchedule={false}
+          canRun={true}
+          onStartMeeting={jest.fn()}
+        />
+      );
+      expect(screen.queryByRole("button", { name: /start meeting/i })).not.toBeInTheDocument();
+    });
+
+    it("calls onStartMeeting with meeting id and 'pending' when clicked", async () => {
+      const onStartMeeting = jest.fn();
+      render(
+        <MeetingRow
+          meeting={pendingMeeting}
+          canSchedule={false}
+          canRun={true}
+          onStartMeeting={onStartMeeting}
+        />
+      );
+      await userEvent.click(screen.getByRole("button", { name: /start meeting/i }));
+      expect(onStartMeeting).toHaveBeenCalledWith("meeting-1", "pending");
+    });
+
+    it("displays startError below the row", () => {
+      render(
+        <MeetingRow
+          meeting={pendingMeeting}
+          canSchedule={false}
+          canRun={true}
+          onStartMeeting={jest.fn()}
+          startError="A meeting is already in progress — adjourn it before starting a new one."
+        />
+      );
+      expect(
+        screen.getByRole("alert")
+      ).toHaveTextContent("A meeting is already in progress");
+    });
+  });
+
   it("renders Reschedule and Cancel buttons for pending meetings when canSchedule is true", () => {
     render(<MeetingRow meeting={pendingMeeting} canSchedule={true} />);
     expect(screen.getByRole("button", { name: /reschedule/i })).toBeInTheDocument();

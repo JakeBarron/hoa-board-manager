@@ -116,6 +116,10 @@ app/
     map/                     — Interactive neighborhood map (STUB — placeholder)
     admin/positions/         — president-only: lists positions + emails (edit form not yet built)
     admin/settings/          — president-only: configurable settings (quorum, HOA name, meeting cadence)
+    treasury/                — financial dashboard: cash on hand, income/expense vs budget, assessment collection (SPEC WRITTEN — not yet built)
+    treasury/actuals/        — monthly YTD actuals + cash balance entry form (canEditTreasury only)
+    treasury/budget/         — budget management + Homeside GL CSV import (canEditTreasury only)
+    properties/              — homeowner table; will gain assessment payment status columns when treasury is built
   architecture/[id]/         — PUBLIC detail page (outside dashboard — no auth required)
   api/minutes/[id]/export/   — GET route: converts minutes HTML → .docx download
 
@@ -194,6 +198,8 @@ supabase/
 
 Permission checks live in `lib/permissions.ts`. RLS policies enforce the same rules at the DB layer.
 
+**Treasury permission:** `canEditTreasury(role, positionName)` — president, officer roles, or the Treasurer position specifically. All authenticated users can read treasury data. Note: officers (VP + Secretary) having edit rights is an explicit policy decision, not a default.
+
 **Route protection:** `proxy.ts` → `lib/supabase/middleware.ts` → `updateSession()` calls `getUser()` (verified server-side, not just cookie) and redirects to `/login` if unauthenticated. `/architecture/[id]` is intentionally public (homeowner deep-link sharing).
 
 ---
@@ -212,6 +218,11 @@ All tables in Supabase public schema with RLS enabled.
 | `motions`, `motion_votes` | Formal motions + per-member votes; schema ready, no UI yet |
 | `meeting_documents` | Drive links for approved minutes + amendments |
 | `settings` | Configurable key/value pairs (quorum_required, hoa_name, meeting_cadence) |
+| `fiscal_years` | One row per budget year — label, start/end dates, default assessment amount, draft/approved status |
+| `budget_line_items`, `budget_monthly_amounts` | Annual budget by GL code + monthly breakdown; populated via Homeside CSV import |
+| `budget_category_actuals` | Treasurer's monthly YTD actuals at category level; upsert on (fiscal_year, category, account_type, date) |
+| `cash_balances` | Point-in-time Operating + Reserve account balances entered by treasurer |
+| `assessment_payments` | Per-property dues payment status per fiscal year; seeded from properties table on year creation |
 
 **Supabase clients:**
 - `lib/supabase/server.ts` — Server Components and Server Actions
@@ -250,6 +261,9 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - `/cra` — EmptyState (see `docs/specs/cra-projects.md`)
 - `/cra/new` — placeholder
 - No `/cra/[id]` page yet
+
+### Spec written, not yet started
+- `/treasury` — financial dashboard (cash on hand, budget vs actuals, assessment collection); see `docs/superpowers/specs/2026-06-03-treasury-dashboard-design.md`
 
 ### Schema-ready, no UI
 - Motions/voting UI — `motions` and `motion_votes` tables exist; the meeting runner uses them but there is no dedicated motion-proposal or per-member voting UI (secretary records everything)

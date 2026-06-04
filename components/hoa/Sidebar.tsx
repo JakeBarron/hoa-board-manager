@@ -15,6 +15,7 @@ interface NavItem {
 const FUNCTION_NAV: NavItem[] = [
   { label: "Meetings", href: "/meetings" },
   { label: "Architecture", href: "/architecture" },
+  { label: "Documents", href: "/documents" },
   { label: "CRA Projects", href: "/cra" },
   { label: "Agenda", href: "/agenda" },
   { label: "Amenities", href: "/amenities" },

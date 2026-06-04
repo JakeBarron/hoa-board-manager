@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import HTMLtoDOCX from "html-to-docx";
+import { generateDocx } from "@/lib/docx";
 
 /**
  * GET /api/minutes/[id]/export
@@ -8,8 +8,8 @@ import HTMLtoDOCX from "html-to-docx";
  * Fetches the minutes record, converts the HTML content to a .docx file,
  * and returns it as a file download. Authentication required.
  *
- * The caller is responsible for uploading the downloaded file to Google Drive
- * and then saving the Drive URL back via the updateMinutesDriveUrl action.
+ * Minutes are also auto-uploaded to Supabase Storage on save; this route
+ * provides an on-demand download for the secretary's convenience.
  */
 export async function GET(
   _request: NextRequest,
@@ -38,17 +38,10 @@ export async function GET(
     return NextResponse.json({ error: "No content to export" }, { status: 400 });
   }
 
-  const docxBuffer = await HTMLtoDOCX(minutes.content, null, {
-    table: { row: { cantSplit: true } },
-    footer: false,
-    pageNumber: false,
-    fontSize: 24,
-    margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-  });
-
+  const docxBuffer = await generateDocx(minutes.content);
   const filename = `minutes_${minutes.meeting_date}.docx`;
 
-  return new NextResponse(new Uint8Array(docxBuffer), {
+  return new NextResponse(Buffer.from(docxBuffer), {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

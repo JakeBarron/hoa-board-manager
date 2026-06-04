@@ -18,7 +18,7 @@ export const metadata = {
  * Board-wide architecture requests page.
  * All board members see the full request list with status badges.
  * The president additionally sees an inline VoteForm on each pending item.
- * "Submit New Request" is stubbed — see docs/specs/architecture-upload.md.
+ * "Submit New Request" links to the upload form at /architecture/new.
  * Chairs are redirected to their committee page (consistent with all other dashboard pages).
  */
 export default async function ArchitecturePage() {
@@ -52,7 +52,7 @@ export default async function ArchitecturePage() {
         title="Architecture Requests"
         subtitle="Homeowner architecture and modification requests"
         action={
-          <Button size="sm" disabled>
+          <Button size="sm" nativeButton={false} render={<Link href="/architecture/new" />}>
             Submit New Request
           </Button>
         }

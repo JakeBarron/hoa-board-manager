@@ -4,21 +4,19 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 /**
- * Creates a new meeting minutes record for the given board position.
- * Requires either content or a Google Drive URL (enforced at the DB level too).
+ * Creates a new meeting minutes record for the given board position and
+ * auto-uploads the content as a .docx to Supabase Storage.
  * Security enforced by RLS.
  *
- * @param positionId    - UUID of the position that owns these minutes
- * @param meetingDate   - ISO date string (YYYY-MM-DD)
- * @param content       - WYSIWYG HTML content authored in-app
- * @param googleDocUrl  - Optional Google Drive URL (set after export + upload)
+ * @param positionId  - UUID of the position that owns these minutes
+ * @param meetingDate - ISO date string (YYYY-MM-DD)
+ * @param content     - WYSIWYG HTML content authored in-app
  * @returns The newly created minutes row ID
  */
 export async function saveMinutes(
   positionId: string,
   meetingDate: string,
-  content: string,
-  googleDocUrl?: string
+  content: string
 ): Promise<{ id: string }> {
   const supabase = await createClient();
 
@@ -28,12 +26,35 @@ export async function saveMinutes(
       position_id: positionId,
       meeting_date: meetingDate,
       content: content || null,
-      google_doc_url: googleDocUrl || null,
     })
     .select("id")
     .single();
 
   if (error) throw new Error(error.message);
+
+  if (content) {
+    try {
+      const { generateDocx } = await import("@/lib/docx");
+      const buffer = await generateDocx(content);
+      const storagePath = `minutes/${data.id}.docx`;
+      const { error: uploadError } = await supabase.storage
+        .from("documents")
+        .upload(storagePath, buffer, {
+          contentType:
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          upsert: true,
+        });
+      if (!uploadError) {
+        await supabase
+          .from("meeting_minutes")
+          .update({ storage_path: storagePath })
+          .eq("id", data.id);
+      }
+    } catch {
+      // Upload failure is non-fatal — content is still saved in the DB
+    }
+  }
+
   revalidatePath("/board", "layout");
   return { id: data.id };
 }

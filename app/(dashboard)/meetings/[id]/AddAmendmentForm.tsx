@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { addMeetingDocument } from "@/actions/meetings";
 
 interface AddAmendmentFormProps {
@@ -13,11 +14,9 @@ interface AddAmendmentFormProps {
 }
 
 /**
- * Small inline form for attaching a Google Drive link as a numbered amendment
- * to an existing meeting. Only rendered for officer+ roles — enforcement is
- * done by the parent server component before passing props here.
- *
- * Calls the addMeetingDocument server action and refreshes the page on success.
+ * Small inline form for uploading a numbered amendment file to an existing meeting.
+ * Uploads directly to Supabase Storage from the browser, then records the storage path
+ * via the addMeetingDocument server action. Only rendered for officer+ roles.
  *
  * @param meetingId           - UUID of the parent meeting
  * @param nextAmendmentNumber - Pre-filled suggested amendment number
@@ -30,7 +29,7 @@ export function AddAmendmentForm({
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
-  const [driveUrl, setDriveUrl] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [amendmentNumber, setAmendmentNumber] = useState(
     String(nextAmendmentNumber)
   );
@@ -43,8 +42,8 @@ export function AddAmendmentForm({
       setError("Please enter a name for this amendment.");
       return;
     }
-    if (!driveUrl.trim()) {
-      setError("Please enter a Google Drive URL.");
+    if (!file) {
+      setError("Please select a file to upload.");
       return;
     }
     const num = parseInt(amendmentNumber, 10);
@@ -56,10 +55,20 @@ export function AddAmendmentForm({
 
     startTransition(async () => {
       try {
-        await addMeetingDocument(meetingId, name.trim(), driveUrl.trim(), "amendment", num);
+        const supabase = createClient();
+        const ext = file.name.split(".").pop() ?? "docx";
+        const storagePath = `minutes/amendments/${crypto.randomUUID()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("documents")
+          .upload(storagePath, file, { contentType: file.type });
+
+        if (uploadError) throw new Error(uploadError.message);
+
+        await addMeetingDocument(meetingId, name.trim(), storagePath, "amendment", num);
         setSuccess(true);
         setName("");
-        setDriveUrl("");
+        setFile(null);
         setIsOpen(false);
         router.refresh();
       } catch (err: unknown) {
@@ -110,17 +119,16 @@ export function AddAmendmentForm({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="amendment-url" className="text-sm font-medium">
-          Google Drive URL{" "}
+        <label htmlFor="amendment-file" className="text-sm font-medium">
+          File{" "}
           <span className="text-destructive" aria-hidden="true">*</span>
         </label>
         <input
-          id="amendment-url"
-          type="url"
-          value={driveUrl}
-          onChange={(e) => setDriveUrl(e.target.value)}
+          id="amendment-file"
+          type="file"
+          accept=".pdf,.docx,.doc"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           disabled={isPending}
-          placeholder="https://docs.google.com/..."
           className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
@@ -148,7 +156,7 @@ export function AddAmendmentForm({
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending} size="sm">
-          {isPending ? "Saving…" : "Save amendment"}
+          {isPending ? "Uploading…" : "Save amendment"}
         </Button>
         <Button
           type="button"

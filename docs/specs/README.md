@@ -12,3 +12,5 @@ Update the status line when work begins or completes.
 | [Non-Voting Chairs](./non-voting-chairs.md) | In progress — spec and implementation plan written | Medium |
 | [Pre-Meeting / Agenda Merge](./pre-meeting-agenda-merge.md) | Not started — fold pre-meeting updates page into agenda; agenda feeds meeting runner | Low |
 | [Production Environment](./production-environment.md) | Not started — using dev Supabase instance | When ready to ship |
+| Treasury Dashboard | Not started — spec in progress | High |
+| Operating Calendar | Feature request — key annual dates and deliverables with templates; requested by treasurer | Medium |

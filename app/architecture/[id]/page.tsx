@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { StatusBadge } from "@/components/hoa/StatusBadge";
@@ -96,6 +97,13 @@ export default async function ArchitectureDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-8">
+      <Link
+        href="/architecture"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Architecture
+      </Link>
+
       {/* Header */}
       <div>
         <div className="flex flex-wrap items-center gap-3">

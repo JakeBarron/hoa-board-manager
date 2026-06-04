@@ -48,9 +48,7 @@ export default async function MeetingsPage() {
       supabase
         .from("meetings")
         .select("id, status")
-        .eq("meeting_date", today)
-        .in("status", ["pending", "in_progress"])
-        .order("created_at", { ascending: false })
+        .eq("status", "in_progress")
         .limit(1)
         .maybeSingle(),
       supabase
@@ -88,7 +86,7 @@ export default async function MeetingsPage() {
   const existingMeeting = existingResult.data
     ? {
         id: existingResult.data.id,
-        status: existingResult.data.status as "pending" | "in_progress",
+        status: "in_progress" as const,
       }
     : null;
 

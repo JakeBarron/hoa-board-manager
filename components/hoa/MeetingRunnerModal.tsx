@@ -11,7 +11,6 @@ import {
   cancelMeeting,
   saveMeetingMinutes,
   adjournMeeting,
-  saveMeetingDriveUrl,
 } from "@/actions/meetings";
 import {
   createMotion,
@@ -774,47 +773,16 @@ function AdjournPanel({
 interface ExportPanelProps {
   meetingId: string;
   meetingDate: string;
-  driveFolder?: string;
-  hoaName?: string;
   onClose: () => void;
 }
 
 /**
- * Post-adjournment panel. Offers a minutes export download and a Drive URL
- * input so the secretary can link the uploaded document back to the meeting.
- * Shows a suggested document title and links to the configured Drive folder.
+ * Post-adjournment panel. Minutes are automatically saved to Documents on adjournment.
+ * Offers an on-demand .docx download for the secretary's convenience.
  */
-function ExportPanel({ meetingId, meetingDate, driveFolder, hoaName, onClose }: ExportPanelProps) {
-  const [driveUrl, setDriveUrl] = useState("");
-  const [saved, setSaved] = useState(false);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-
-  const suggestedTitle = (() => {
-    const [year, month] = meetingDate.split("-");
-    const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleString(
-      "default",
-      { month: "long" }
-    );
-    const org = hoaName ?? "HOA";
-    return `${org} Board Meeting Minutes – ${monthName} ${year}`;
-  })();
-
+function ExportPanel({ meetingId, meetingDate, onClose }: ExportPanelProps) {
   const handleExport = () => {
     window.open(`/api/meetings/${meetingId}/export`, "_blank");
-  };
-
-  const handleSaveDriveUrl = () => {
-    if (!driveUrl.trim()) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await saveMeetingDriveUrl(meetingId, driveUrl.trim());
-        setSaved(true);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save Drive URL.");
-      }
-    });
   };
 
   return (
@@ -822,68 +790,13 @@ function ExportPanel({ meetingId, meetingDate, driveFolder, hoaName, onClose }: 
       <div>
         <h2 className="text-xl font-semibold">Meeting Adjourned</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {formatMeetingDate(meetingDate)} — Export the minutes, upload to Google Drive, then paste the link below.
+          {formatMeetingDate(meetingDate)} — Minutes have been saved to Documents.
         </p>
-      </div>
-
-      <div className="rounded-md border border-border bg-muted/40 p-4 space-y-2 text-sm">
-        <div>
-          <span className="font-medium">Suggested title: </span>
-          <span className="text-muted-foreground">{suggestedTitle}</span>
-        </div>
-        {driveFolder && (
-          <div>
-            <span className="font-medium">Upload to: </span>
-            <a
-              href={driveFolder}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Minutes folder ↗
-            </a>
-          </div>
-        )}
       </div>
 
       <Button onClick={handleExport} variant="outline">
         Export Minutes (.docx)
       </Button>
-
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <label htmlFor="drive-url" className="text-sm font-medium">
-            Paste Google Drive URL after uploading
-          </label>
-          <input
-            id="drive-url"
-            type="url"
-            value={driveUrl}
-            onChange={(e) => setDriveUrl(e.target.value)}
-            placeholder="https://docs.google.com/..."
-            className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-        </div>
-
-        {error && (
-          <p role="alert" className="text-xs text-destructive">
-            {error}
-          </p>
-        )}
-
-        {saved ? (
-          <p className="text-sm font-medium text-green-700">✓ Drive URL saved.</p>
-        ) : (
-          <Button
-            onClick={handleSaveDriveUrl}
-            disabled={!driveUrl.trim() || isPending}
-            variant="outline"
-          >
-            {isPending && <Loader2 className="animate-spin" />}
-            {isPending ? "Saving…" : "Save Drive URL"}
-          </Button>
-        )}
-      </div>
 
       <Button onClick={onClose}>Close</Button>
     </div>
@@ -1096,8 +1009,11 @@ export function MeetingRunnerModal({
     startTransition(async () => {
       try {
         await saveMeetingMinutes(meetingId, minutesContent);
-        await adjournMeeting(meetingId, proposedBy, secondedBy);
+        const { uploadError } = await adjournMeeting(meetingId, proposedBy, secondedBy);
         setView("export");
+        if (uploadError) {
+          setActionError(`Minutes adjourned but document upload failed: ${uploadError}`);
+        }
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Failed to adjourn.");
       }
@@ -1223,8 +1139,6 @@ export function MeetingRunnerModal({
           <ExportPanel
             meetingId={meetingId}
             meetingDate={meetingDate}
-            driveFolder={driveFolder}
-            hoaName={hoaName}
             onClose={onClose}
           />
         )}

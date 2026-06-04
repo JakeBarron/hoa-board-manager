@@ -158,7 +158,7 @@ export default async function MeetingDetailPage({
     supabase
       .from("meetings")
       .select(
-        "id, meeting_date, status, called_by, seconded_by, started_at, adjourned_at, minutes_drive_url, present_positions"
+        "id, meeting_date, status, called_by, seconded_by, started_at, adjourned_at, minutes_drive_url, storage_path, present_positions"
       )
       .eq("id", id)
       .single(),
@@ -172,7 +172,7 @@ export default async function MeetingDetailPage({
       .order("closed_at", { ascending: true, nullsFirst: false }),
     supabase
       .from("meeting_documents")
-      .select("id, name, drive_url, doc_type, amendment_number")
+      .select("id, name, drive_url, storage_path, doc_type, amendment_number")
       .eq("meeting_id", id)
       .order("amendment_number", { ascending: true, nullsFirst: false }),
     supabase
@@ -214,7 +214,7 @@ export default async function MeetingDetailPage({
 
   const meetingDocs = (meetingDocsResult.data ?? []) as Pick<
     MeetingDocument,
-    "id" | "name" | "drive_url" | "doc_type" | "amendment_number"
+    "id" | "name" | "drive_url" | "storage_path" | "doc_type" | "amendment_number"
   >[];
 
   const actionItems = (actionItemsResult.data ?? []) as Pick<
@@ -269,6 +269,32 @@ export default async function MeetingDetailPage({
   const amendments = meetingDocs.filter((d) => d.doc_type === "amendment");
   const primaryMinutesDoc = meetingDocs.find((d) => d.doc_type === "minutes");
   const nextAmendmentNumber = amendments.length + 1;
+
+  // Collect all storage paths needing signed URLs and fetch in one batch call (1-hour TTL)
+  const storagePaths: string[] = [];
+  if (meeting.storage_path) storagePaths.push(meeting.storage_path);
+  const storageAmendments = amendments.filter((a) => a.storage_path) as typeof amendments & { storage_path: string }[];
+  storageAmendments.forEach((a) => storagePaths.push(a.storage_path!));
+
+  const signedUrlByPath = new Map<string, string>();
+  if (storagePaths.length > 0) {
+    const { data: urlData } = await supabase.storage
+      .from("documents")
+      .createSignedUrls(storagePaths, 3600);
+    urlData?.forEach((entry) => {
+      if (entry.signedUrl && entry.path) signedUrlByPath.set(entry.path, entry.signedUrl);
+    });
+  }
+
+  const minutesSignedUrl = meeting.storage_path
+    ? (signedUrlByPath.get(meeting.storage_path) ?? null)
+    : null;
+
+  const amendmentSignedUrls = new Map<string, string>();
+  storageAmendments.forEach((a) => {
+    const url = signedUrlByPath.get(a.storage_path!);
+    if (url) amendmentSignedUrls.set(a.id, url);
+  });
 
   const isOfficerOrAbove = canEditAll(currentPosition.role);
 
@@ -522,18 +548,21 @@ export default async function MeetingDetailPage({
         }
       >
         <div className="space-y-4">
-          {meeting.minutes_drive_url || primaryMinutesDoc ? (
+          {minutesSignedUrl || meeting.minutes_drive_url || primaryMinutesDoc ? (
             <div className="text-sm">
               <span className="font-medium">Minutes: </span>
               <a
                 href={
-                  meeting.minutes_drive_url ?? primaryMinutesDoc!.drive_url
+                  minutesSignedUrl ??
+                  meeting.minutes_drive_url ??
+                  primaryMinutesDoc!.drive_url ??
+                  "#"
                 }
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                View Minutes
+                {minutesSignedUrl ? "Download Minutes (.docx)" : "View Minutes"}
               </a>
             </div>
           ) : (
@@ -546,23 +575,29 @@ export default async function MeetingDetailPage({
             <div className="space-y-2">
               <p className="text-sm font-medium">Amendments</p>
               <ul className="space-y-1.5">
-                {amendments.map((doc) => (
-                  <li key={doc.id} className="text-sm">
-                    <a
-                      href={doc.drive_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary hover:underline"
-                    >
-                      {doc.name}
-                    </a>
-                    {doc.amendment_number !== null && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        #{doc.amendment_number}
-                      </span>
-                    )}
-                  </li>
-                ))}
+                {amendments.map((doc) => {
+                  const href =
+                    amendmentSignedUrls.get(doc.id) ?? doc.drive_url ?? "#";
+                  const isStorage = amendmentSignedUrls.has(doc.id);
+                  return (
+                    <li key={doc.id} className="text-sm">
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {doc.name}
+                        {isStorage ? " (.docx)" : ""}
+                      </a>
+                      {doc.amendment_number !== null && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          #{doc.amendment_number}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}

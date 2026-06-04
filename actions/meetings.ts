@@ -262,11 +262,12 @@ export async function saveMeetingMinutes(
 }
 
 /**
- * Formally adjourns the meeting: sets adjourned_at to now and moves status to adjourned.
+ * Formally adjourns the meeting: sets adjourned_at to now, moves status to adjourned,
+ * and auto-uploads the minutes as a .docx to Supabase Storage at minutes/{meetingId}.docx.
  * The proposedBy/secondedBy params capture who moved and seconded for the UI flow
  * but are not persisted (schema has no separate adjournment columns).
  *
- * @param meetingId  - UUID of the meeting to adjourn
+ * @param meetingId   - UUID of the meeting to adjourn
  * @param _proposedBy - Position ID of the member who moved to adjourn (UI only)
  * @param _secondedBy - Position ID of the member who seconded adjournment (UI only)
  */
@@ -274,7 +275,7 @@ export async function adjournMeeting(
   meetingId: string,
   _proposedBy?: string,
   _secondedBy?: string
-): Promise<void> {
+): Promise<{ uploadError: string | null }> {
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -286,8 +287,48 @@ export async function adjournMeeting(
     .eq("id", meetingId);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/meetings");
+
+  const { data: meeting } = await supabase
+    .from("meetings")
+    .select("minutes_content")
+    .eq("id", meetingId)
+    .single();
+
+  if (!meeting?.minutes_content) {
+    revalidatePath("/meetings", "layout");
+    revalidatePath(`/meetings/${meetingId}`);
+    revalidatePath("/dashboard");
+    return { uploadError: null };
+  }
+
+  const { generateDocx } = await import("@/lib/docx");
+  const buffer = await generateDocx(meeting.minutes_content);
+  const storagePath = `minutes/${meetingId}.docx`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("documents")
+    .upload(storagePath, buffer, {
+      contentType:
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      upsert: true,
+    });
+
+  if (uploadError) {
+    revalidatePath("/meetings", "layout");
+    revalidatePath(`/meetings/${meetingId}`);
+    revalidatePath("/dashboard");
+    return { uploadError: uploadError.message };
+  }
+
+  const { error: updateError } = await supabase
+    .from("meetings")
+    .update({ storage_path: storagePath })
+    .eq("id", meetingId);
+
+  revalidatePath("/meetings", "layout");
+  revalidatePath(`/meetings/${meetingId}`);
   revalidatePath("/dashboard");
+  return { uploadError: updateError?.message ?? null };
 }
 
 /**
@@ -312,22 +353,25 @@ export async function saveMeetingDriveUrl(
 }
 
 /**
- * Adds a Drive document link (primary minutes or amendment) to a meeting.
+ * Adds a document (primary minutes or amendment) to a meeting.
+ * Accepts either a Supabase Storage path or a legacy Google Drive URL.
  * Stores the document in meeting_documents for reference alongside the meeting.
  *
  * @param meetingId       - UUID of the meeting this document belongs to
  * @param name            - Human-readable document name
- * @param driveUrl        - Full Google Drive share URL
+ * @param storagePath     - Supabase Storage path (preferred for new records)
  * @param docType         - 'minutes' for primary minutes, 'amendment' for amendments
  * @param amendmentNumber - Required when docType is 'amendment'; sequential amendment number
+ * @param driveUrl        - Legacy Google Drive URL (only for backward-compat imports)
  * @returns The newly created document row ID
  */
 export async function addMeetingDocument(
   meetingId: string,
   name: string,
-  driveUrl: string,
+  storagePath: string,
   docType: "minutes" | "amendment",
-  amendmentNumber?: number
+  amendmentNumber?: number,
+  driveUrl?: string
 ): Promise<{ id: string }> {
   const supabase = await createClient();
 
@@ -336,7 +380,8 @@ export async function addMeetingDocument(
     .insert({
       meeting_id: meetingId,
       name,
-      drive_url: driveUrl,
+      storage_path: storagePath || null,
+      drive_url: driveUrl ?? null,
       doc_type: docType,
       amendment_number: amendmentNumber ?? null,
     })

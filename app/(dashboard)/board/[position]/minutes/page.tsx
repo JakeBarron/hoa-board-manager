@@ -46,9 +46,23 @@ export default async function MinutesPage({ params }: Props) {
 
   const { data: minutes } = await supabase
     .from("meeting_minutes")
-    .select("id, meeting_date, google_doc_url, content")
+    .select("id, meeting_date, google_doc_url, storage_path, content")
     .eq("position_id", targetPosition.id)
     .order("meeting_date", { ascending: false });
+
+  // Generate signed URLs for storage-backed minutes in one batch call (1-hour TTL)
+  const signedUrls = new Map<string, string>();
+  const storageMinutes = (minutes ?? []).filter(
+    (m) => (m as { storage_path: string | null }).storage_path
+  ) as { id: string; storage_path: string }[];
+  if (storageMinutes.length > 0) {
+    const { data: urlData } = await supabase.storage
+      .from("documents")
+      .createSignedUrls(storageMinutes.map((m) => m.storage_path), 3600);
+    urlData?.forEach((entry, i) => {
+      if (entry.signedUrl) signedUrls.set(storageMinutes[i].id, entry.signedUrl);
+    });
+  }
 
   const label = POSITION_LABELS[position as BoardPositionName] ?? position;
   const editable = canEditSection(
@@ -93,38 +107,50 @@ export default async function MinutesPage({ params }: Props) {
         ) : (
           <ul className="divide-y divide-border">
             {(minutes as Pick<MeetingMinutes, "id" | "meeting_date" | "google_doc_url" | "content">[]).map(
-              (m) => (
-                <li key={m.id} className="flex items-center gap-4 py-3 text-sm">
-                  <span className="w-32 shrink-0 font-medium tabular-nums">
-                    {new Date(m.meeting_date + "T00:00:00").toLocaleDateString(
-                      undefined,
-                      { year: "numeric", month: "short", day: "numeric" }
-                    )}
-                  </span>
-                  <span className="flex-1 text-muted-foreground">
-                    {m.google_doc_url ? (
+              (m) => {
+                const signedUrl = signedUrls.get(m.id);
+                return (
+                  <li key={m.id} className="flex items-center gap-4 py-3 text-sm">
+                    <span className="w-32 shrink-0 font-medium tabular-nums">
+                      {new Date(m.meeting_date + "T00:00:00").toLocaleDateString(
+                        undefined,
+                        { year: "numeric", month: "short", day: "numeric" }
+                      )}
+                    </span>
+                    <span className="flex-1 text-muted-foreground">
+                      {signedUrl ? (
+                        <a
+                          href={signedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        >
+                          Download .docx ↓
+                        </a>
+                      ) : m.google_doc_url ? (
+                        <a
+                          href={m.google_doc_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        >
+                          View on Google Drive ↗
+                        </a>
+                      ) : m.content ? (
+                        <span className="italic">Saved — no file yet</span>
+                      ) : null}
+                    </span>
+                    {m.content && (
                       <a
-                        href={m.google_doc_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline underline-offset-2"
+                        href={`/api/minutes/${m.id}/export`}
+                        className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                       >
-                        View on Google Drive ↗
+                        Export .docx
                       </a>
-                    ) : m.content ? (
-                      <span className="italic">Draft — not yet on Drive</span>
-                    ) : null}
-                  </span>
-                  {m.content && (
-                    <a
-                      href={`/api/minutes/${m.id}/export`}
-                      className="shrink-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    >
-                      Export .docx
-                    </a>
-                  )}
-                </li>
-              )
+                    )}
+                  </li>
+                );
+              }
             )}
           </ul>
         )}

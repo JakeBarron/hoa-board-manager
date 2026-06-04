@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import HTMLtoDOCX from "html-to-docx";
+import { generateDocx } from "@/lib/docx";
 
 /**
  * GET /api/meetings/[id]/export
@@ -38,17 +38,10 @@ export async function GET(
     return NextResponse.json({ error: "No content to export" }, { status: 400 });
   }
 
-  const docxBuffer = await HTMLtoDOCX(meeting.minutes_content, null, {
-    table: { row: { cantSplit: true } },
-    footer: false,
-    pageNumber: false,
-    fontSize: 24,
-    margins: { top: 1440, right: 1440, bottom: 1440, left: 1440 },
-  });
-
+  const docxBuffer = await generateDocx(meeting.minutes_content);
   const filename = `minutes_${meeting.meeting_date}.docx`;
 
-  return new NextResponse(new Uint8Array(docxBuffer), {
+  return new NextResponse(Buffer.from(docxBuffer), {
     headers: {
       "Content-Type":
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

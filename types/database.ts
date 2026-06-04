@@ -201,6 +201,7 @@ export type Database = {
           meeting_date: string;
           content: string | null;
           google_doc_url: string | null;
+          storage_path: string | null;
           created_at: string;
         };
         Insert: {
@@ -209,11 +210,13 @@ export type Database = {
           meeting_date: string;
           content?: string | null;
           google_doc_url?: string | null;
+          storage_path?: string | null;
           created_at?: string;
         };
         Update: {
           content?: string | null;
           google_doc_url?: string | null;
+          storage_path?: string | null;
         };
         Relationships: [];
       };
@@ -299,6 +302,7 @@ export type Database = {
           status: MeetingStatus;
           minutes_content: string | null;
           minutes_drive_url: string | null;
+          storage_path: string | null;
           reminder_sent_at: string | null;
           present_positions: string[];
           created_at: string;
@@ -314,6 +318,7 @@ export type Database = {
           status?: MeetingStatus;
           minutes_content?: string | null;
           minutes_drive_url?: string | null;
+          storage_path?: string | null;
           present_positions?: string[];
           created_at?: string;
         };
@@ -327,6 +332,7 @@ export type Database = {
           status?: MeetingStatus;
           minutes_content?: string | null;
           minutes_drive_url?: string | null;
+          storage_path?: string | null;
           reminder_sent_at?: string | null;
           present_positions?: string[];
         };
@@ -337,7 +343,8 @@ export type Database = {
           id: string;
           meeting_id: string;
           name: string;
-          drive_url: string;
+          drive_url: string | null;
+          storage_path: string | null;
           doc_type: MeetingDocType;
           amendment_number: number | null;
           created_at: string;
@@ -346,12 +353,35 @@ export type Database = {
           id?: string;
           meeting_id: string;
           name: string;
-          drive_url: string;
+          drive_url?: string | null;
+          storage_path?: string | null;
           doc_type?: MeetingDocType;
           amendment_number?: number | null;
           created_at?: string;
         };
         Update: never;
+        Relationships: [];
+      };
+      documents: {
+        Row: {
+          id: string;
+          type: DocumentType;
+          name: string;
+          storage_path: string;
+          position_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          type: DocumentType;
+          name: string;
+          storage_path: string;
+          position_id?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          name?: string;
+        };
         Relationships: [];
       };
       motions: {
@@ -522,6 +552,8 @@ export type MotionStatus =
 
 export type VoteChoice = "yay" | "nay" | "absent" | "no_vote";
 
+export type DocumentType = "waiver" | "contract" | "other";
+
 // ─── Convenience row types ───────────────────────────────────────────────────
 
 export type Position = Database["public"]["Tables"]["positions"]["Row"];
@@ -540,3 +572,4 @@ export type MeetingDocument = Database["public"]["Tables"]["meeting_documents"][
 export type Motion = Database["public"]["Tables"]["motions"]["Row"];
 export type MotionVote = Database["public"]["Tables"]["motion_votes"]["Row"];
 export type Property = Database["public"]["Tables"]["properties"]["Row"];
+export type Document = Database["public"]["Tables"]["documents"]["Row"];

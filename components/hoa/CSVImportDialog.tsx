@@ -31,7 +31,9 @@ export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess = () 
   const [isPending, startTransition] = useTransition();
   const [resetKey, setResetKey] = useState(0);
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (files: File[]) => {
+    const file = files[0];
+    if (!file) return;
     const text = await file.text();
     const result = parseBudgetCSV(text, fiscalYearStart);
     setParseResult(result);

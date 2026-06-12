@@ -8,8 +8,10 @@ interface FileUploadButtonProps {
   accept?: string;
   /** Button label. Defaults to "Choose File". */
   label?: string;
-  /** Called with the selected File when the user picks one. */
-  onChange: (file: File) => void;
+  /** Called with the selected file(s). Always an array — use files[0] for single-file pickers. */
+  onChange: (files: File[]) => void;
+  /** Allow selecting multiple files at once. */
+  multiple?: boolean;
   disabled?: boolean;
   /** Increment to force the input to reset (e.g. after a successful upload). */
   resetKey?: number;
@@ -17,18 +19,21 @@ interface FileUploadButtonProps {
 
 /**
  * A styled file picker that looks like a button rather than a browser default
- * input. Shows the selected filename alongside the button after a file is chosen.
- * Generic enough for CSV imports, PDF uploads, or any document attachment flow.
+ * input. Shows the selected filename (or count) alongside the button after
+ * files are chosen. Generic enough for CSV imports, PDF uploads, or any
+ * document attachment flow.
  *
  * @param accept   - MIME types or extensions to filter (forwarded to input accept)
  * @param label    - Text shown on the trigger button
- * @param onChange - Callback fired with the chosen File
+ * @param onChange - Callback fired with the chosen File array; use files[0] for single-file pickers
+ * @param multiple - Allow selecting more than one file at a time
  * @param resetKey - Increment this to clear the selection (triggers remount)
  */
 export function FileUploadButton({
   accept,
   label = "Choose File",
   onChange,
+  multiple,
   disabled,
   resetKey = 0,
 }: FileUploadButtonProps) {
@@ -36,10 +41,10 @@ export function FileUploadButton({
   const [fileName, setFileName] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setFileName(file.name);
-    onChange(file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setFileName(files.length === 1 ? files[0].name : `${files.length} files selected`);
+    onChange(files);
   };
 
   return (
@@ -49,6 +54,7 @@ export function FileUploadButton({
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         onChange={handleChange}
         className="sr-only"
         aria-hidden="true"

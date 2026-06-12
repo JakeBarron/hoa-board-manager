@@ -69,7 +69,7 @@ export default async function ArchitectureDetailPage({
       .single(),
     supabase
       .from("architecture_documents")
-      .select("id, file_name, doc_type")
+      .select("id, file_name, doc_type, storage_path")
       .eq("request_id", id)
       .order("created_at", { ascending: true }),
   ]);
@@ -90,8 +90,22 @@ export default async function ArchitectureDetailPage({
 
   const documents = (documentsResult.data ?? []) as Pick<
     ArchitectureDocument,
-    "id" | "file_name" | "doc_type"
+    "id" | "file_name" | "doc_type" | "storage_path"
   >[];
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const formDoc = documents.find(
+    (d) => d.doc_type === "form" && d.file_name.toLowerCase().endsWith(".pdf")
+  );
+
+  let formDocSignedUrl: string | null = null;
+  if (user && formDoc) {
+    const { data } = await supabase.storage
+      .from("documents")
+      .createSignedUrl(formDoc.storage_path, 3600);
+    formDocSignedUrl = data?.signedUrl ?? null;
+  }
 
   const isResolved = request.status === "approved" || request.status === "denied";
 
@@ -157,6 +171,18 @@ export default async function ArchitectureDetailPage({
               </div>
             )}
           </dl>
+        </SectionCard>
+      )}
+
+      {/* Form Preview — visible to authenticated board members only */}
+      {formDocSignedUrl && (
+        <SectionCard title="Form Preview">
+          <iframe
+            src={formDocSignedUrl}
+            className="w-full rounded border"
+            style={{ height: "600px" }}
+            title="Architecture request form"
+          />
         </SectionCard>
       )}
 

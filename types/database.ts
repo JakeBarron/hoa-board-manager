@@ -496,6 +496,165 @@ export type Database = {
         };
         Relationships: [];
       };
+      fiscal_years: {
+        Row: {
+          id: string;
+          label: string;
+          start_date: string;
+          end_date: string;
+          default_assessment_amount: number;
+          status: FiscalYearStatus;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          label: string;
+          start_date: string;
+          end_date: string;
+          default_assessment_amount: number;
+          status?: FiscalYearStatus;
+          created_at?: string;
+        };
+        Update: {
+          label?: string;
+          start_date?: string;
+          end_date?: string;
+          default_assessment_amount?: number;
+          status?: FiscalYearStatus;
+        };
+        Relationships: [];
+      };
+      budget_line_items: {
+        Row: {
+          id: string;
+          fiscal_year_id: string;
+          gl_code: string;
+          description: string;
+          category: string;
+          account_type: AccountType;
+          budget_amount: number;
+        };
+        Insert: {
+          id?: string;
+          fiscal_year_id: string;
+          gl_code: string;
+          description: string;
+          category: string;
+          account_type: AccountType;
+          budget_amount: number;
+        };
+        Update: {
+          description?: string;
+          budget_amount?: number;
+        };
+        Relationships: [];
+      };
+      budget_monthly_amounts: {
+        Row: {
+          id: string;
+          budget_line_item_id: string;
+          month_start: string;
+          amount: number;
+        };
+        Insert: {
+          id?: string;
+          budget_line_item_id: string;
+          month_start: string;
+          amount: number;
+        };
+        Update: {
+          amount?: number;
+        };
+        Relationships: [];
+      };
+      budget_category_actuals: {
+        Row: {
+          id: string;
+          fiscal_year_id: string;
+          category: string;
+          account_type: AccountType;
+          as_of_date: string;
+          ytd_actual: number;
+          entered_by_position_id: string;
+          entered_at: string;
+        };
+        Insert: {
+          id?: string;
+          fiscal_year_id: string;
+          category: string;
+          account_type: AccountType;
+          as_of_date: string;
+          ytd_actual: number;
+          entered_by_position_id: string;
+          entered_at?: string;
+        };
+        Update: {
+          ytd_actual?: number;
+          as_of_date?: string;
+          entered_at?: string;
+        };
+        Relationships: [];
+      };
+      cash_balances: {
+        Row: {
+          id: string;
+          fiscal_year_id: string;
+          as_of_date: string;
+          operating_balance: number;
+          reserve_balance: number;
+          entered_by_position_id: string;
+          entered_at: string;
+        };
+        Insert: {
+          id?: string;
+          fiscal_year_id: string;
+          as_of_date: string;
+          operating_balance: number;
+          reserve_balance: number;
+          entered_by_position_id: string;
+          entered_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      assessment_payments: {
+        Row: {
+          id: string;
+          property_id: string;
+          fiscal_year_id: string;
+          status: AssessmentStatus;
+          amount_due: number;
+          amount_paid: number;
+          payment_reference: string | null;
+          paid_at: string | null;
+          notes: string | null;
+          entered_by_position_id: string | null;
+          entered_at: string;
+        };
+        Insert: {
+          id?: string;
+          property_id: string;
+          fiscal_year_id: string;
+          status?: AssessmentStatus;
+          amount_due: number;
+          amount_paid?: number;
+          payment_reference?: string | null;
+          paid_at?: string | null;
+          notes?: string | null;
+          entered_by_position_id?: string | null;
+          entered_at?: string;
+        };
+        Update: {
+          status?: AssessmentStatus;
+          amount_paid?: number;
+          payment_reference?: string | null;
+          paid_at?: string | null;
+          notes?: string | null;
+          entered_by_position_id?: string | null;
+          entered_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -554,6 +713,16 @@ export type VoteChoice = "yay" | "nay" | "absent" | "no_vote";
 
 export type DocumentType = "waiver" | "contract" | "other";
 
+export type FiscalYearStatus = "draft" | "approved";
+
+export type AccountType =
+  | "operating_income"
+  | "operating_expense"
+  | "reserve_income"
+  | "reserve_expense";
+
+export type AssessmentStatus = "paid" | "partial" | "unpaid" | "waived";
+
 // ─── Convenience row types ───────────────────────────────────────────────────
 
 export type Position = Database["public"]["Tables"]["positions"]["Row"];
@@ -573,3 +742,9 @@ export type Motion = Database["public"]["Tables"]["motions"]["Row"];
 export type MotionVote = Database["public"]["Tables"]["motion_votes"]["Row"];
 export type Property = Database["public"]["Tables"]["properties"]["Row"];
 export type Document = Database["public"]["Tables"]["documents"]["Row"];
+export type FiscalYear = Database["public"]["Tables"]["fiscal_years"]["Row"];
+export type BudgetLineItem = Database["public"]["Tables"]["budget_line_items"]["Row"];
+export type BudgetMonthlyAmount = Database["public"]["Tables"]["budget_monthly_amounts"]["Row"];
+export type CategoryActual = Database["public"]["Tables"]["budget_category_actuals"]["Row"];
+export type CashBalance = Database["public"]["Tables"]["cash_balances"]["Row"];
+export type AssessmentPayment = Database["public"]["Tables"]["assessment_payments"]["Row"];

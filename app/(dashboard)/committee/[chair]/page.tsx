@@ -126,10 +126,7 @@ export default async function CommitteePage({ params, searchParams }: Props) {
       />
 
       {canEdit && (
-        <SectionCard
-          title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}
-          description="Submit your status update before the board meeting."
-        >
+        <SectionCard title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}>
           <PreMeetingForm
             positionId={targetPosition.id}
             selectedDate={nextMeetingDate}

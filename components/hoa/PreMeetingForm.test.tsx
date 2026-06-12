@@ -73,7 +73,7 @@ describe("PreMeetingForm", () => {
       fireEvent.click(screen.getByRole("button", { name: "Submit update" }));
       await waitFor(() => {
         expect(screen.getByText("Done.")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Edit update" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
       });
     });
   });
@@ -84,12 +84,12 @@ describe("PreMeetingForm", () => {
     it("starts in the success state when existingContent is provided", () => {
       render(<PreMeetingForm {...props} />);
       expect(screen.getByText("Last month summary.")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Edit update" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
     });
 
-    it("switches to the edit form when 'Edit update' is clicked", async () => {
+    it("switches to the edit form when 'Edit' is clicked", async () => {
       render(<PreMeetingForm {...props} />);
-      await userEvent.click(screen.getByRole("button", { name: "Edit update" }));
+      await userEvent.click(screen.getByRole("button", { name: "Edit" }));
       expect(screen.getByRole("textbox")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
     });

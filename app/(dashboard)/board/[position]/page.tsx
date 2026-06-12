@@ -150,10 +150,7 @@ export default async function BoardPositionPage({ params, searchParams }: Props)
       </div>
 
       {isOwnPage && (
-        <SectionCard
-          title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}
-          description="Submit your status update before the board meeting."
-        >
+        <SectionCard title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}>
           <PreMeetingForm
             positionId={currentPosition.id}
             selectedDate={nextMeetingDate}

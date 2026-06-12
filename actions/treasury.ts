@@ -239,7 +239,7 @@ export async function initializeAssessments(fiscalYearId: string): Promise<void>
   if (error) throw new Error(error.message);
 
   revalidatePath("/properties");
-  revalidatePath("/treasury");
+  revalidatePath("/treasury", "layout");
 }
 
 /**

@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { canEditTreasury, isAdmin } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
@@ -60,6 +61,9 @@ export default async function BudgetPage() {
 
   return (
     <div className="space-y-6">
+      <Link href="/treasury" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+        ← Treasury
+      </Link>
       <PageHeader
         title="Budget Management"
         subtitle={fy ? `${fy.label} · ${fy.start_date} to ${fy.end_date}` : "No fiscal year set up"}

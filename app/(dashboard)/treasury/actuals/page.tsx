@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { canEditTreasury } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
@@ -67,6 +68,9 @@ export default async function ActualsPage() {
 
   return (
     <div className="space-y-6">
+      <Link href="/treasury" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+        ← Treasury
+      </Link>
       <PageHeader
         title={`Enter Actuals — ${fy.label}`}
         subtitle="YTD figures from your Homeside monthly report"

@@ -148,14 +148,24 @@ export default async function TreasuryPage() {
         subtitle={`${currentFY.status === "approved" ? "Budget approved" : "Budget draft"} · ${currentFY.start_date} to ${currentFY.end_date}`}
         action={
           canEdit ? (
-            <Button
-              render={<Link href="/treasury/actuals" />}
-              nativeButton={false}
-              variant="outline"
-              size="sm"
-            >
-              Enter Actuals
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                render={<Link href="/treasury/budget" />}
+                nativeButton={false}
+                variant="outline"
+                size="sm"
+              >
+                Manage Budget
+              </Button>
+              <Button
+                render={<Link href="/treasury/actuals" />}
+                nativeButton={false}
+                variant="outline"
+                size="sm"
+              >
+                Enter Actuals
+              </Button>
+            </div>
           ) : undefined
         }
       />

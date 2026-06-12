@@ -1,4 +1,4 @@
-import { parse } from "csv-parse/sync";
+import Papa from "papaparse";
 import type { AccountType } from "@/types/database";
 
 export interface ParsedBudgetRow {
@@ -34,14 +34,22 @@ export function parseBudgetCSV(csvText: string, fiscalYearStart: string): CSVPar
   const errors: string[] = [];
   let skippedCount = 0;
 
-  const records: string[][] = parse(csvText.trim(), {
-    relax_column_count: true,
-    skip_empty_lines: true,
+  const { data: records } = Papa.parse<string[]>(csvText, {
+    skipEmptyLines: true,
   });
 
   const headerIdx = findHeaderRowIndex(records);
   if (headerIdx === -1) {
-    return { rows: [], errors: ["Could not find header row containing month column names (Apr–Mar)."], skippedCount: records.length };
+    const firstRow = records[0]?.slice(0, 6).join(", ") ?? "(empty file)";
+    return {
+      rows: [],
+      errors: [
+        `Could not find header row containing month column names (Apr–Mar). ` +
+        `The parser looks for columns starting with Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, Jan, Feb, Mar. ` +
+        `First row found: "${firstRow}${records[0]?.length > 6 ? "…" : ""}"`,
+      ],
+      skippedCount: records.length,
+    };
   }
 
   const header = records[headerIdx].map((h) => h.toLowerCase().trim());
@@ -118,10 +126,9 @@ export function parseBudgetCSV(csvText: string, fiscalYearStart: string): CSVPar
  * Returns the row index or -1 if not found.
  */
 function findHeaderRowIndex(records: string[][]): number {
-  const monthSet = new Set(FISCAL_MONTHS);
   for (let i = 0; i < records.length; i++) {
     const row = records[i].map((c) => c.toLowerCase().trim());
-    const hits = row.filter((c) => monthSet.has(c)).length;
+    const hits = row.filter((c) => FISCAL_MONTHS.some((m) => c.startsWith(m))).length;
     if (hits >= 3) return i;
   }
   return -1;

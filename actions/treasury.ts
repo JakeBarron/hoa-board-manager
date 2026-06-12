@@ -109,9 +109,13 @@ export async function importBudget(
     .select("id, gl_code");
   if (insertError) throw new Error(insertError.message);
 
+  // Build a lookup map for O(1) access and to surface any duplicate gl_codes
+  const rowsByGlCode = new Map(rows.map((r) => [r.gl_code, r]));
+
   // Insert monthly amounts
   const monthlyInserts = inserted.flatMap((item) => {
-    const row = rows.find((r) => r.gl_code === item.gl_code)!;
+    const row = rowsByGlCode.get(item.gl_code);
+    if (!row) return [];
     return row.monthly_amounts.map((m) => ({
       budget_line_item_id: item.id,
       month_start: m.month_start,
@@ -137,6 +141,13 @@ export async function approveBudget(fiscalYearId: string): Promise<void> {
   const { supabase, position } = await requireTreasuryEditor();
   if (position.role !== "president") throw new Error("Only the president can approve budgets.");
 
+  const { data: fy } = await supabase
+    .from("fiscal_years")
+    .select("status")
+    .eq("id", fiscalYearId)
+    .single();
+  if (fy?.status === "approved") throw new Error("Budget is already approved.");
+
   const { error } = await supabase
     .from("fiscal_years")
     .update({ status: "approved" })
@@ -146,9 +157,11 @@ export async function approveBudget(fiscalYearId: string): Promise<void> {
 }
 
 /**
- * Upserts YTD category actuals and a cash balance snapshot for a given date.
- * Uses upsert on (fiscal_year_id, category, account_type, as_of_date) so
- * re-submitting the same date overwrites the previous entry.
+ * Upserts YTD category actuals and appends a cash balance snapshot for a given date.
+ * Category actuals upsert on (fiscal_year_id, category, account_type, as_of_date) so
+ * re-submitting the same date overwrites the previous actuals entry.
+ * Cash balances are append-only — each submission creates a new point-in-time snapshot
+ * even if the same as_of_date is submitted twice.
  *
  * @param fiscalYearId     - UUID of the active fiscal year
  * @param asOfDate         - ISO date the actuals are through (e.g. "2025-11-30")

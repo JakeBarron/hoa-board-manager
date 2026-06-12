@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import type { CategoryBudgetSummary } from "@/types/domain";
 import type { BudgetLineItem } from "@/types/database";
 
@@ -91,9 +91,8 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
                   const remaining = cat.budget_amount - cat.ytd_actual;
                   const isOpen = expanded.has(key);
                   return (
-                    <>
+                    <React.Fragment key={key}>
                       <tr
-                        key={key}
                         onClick={() => toggle(key)}
                         className="border-b cursor-pointer hover:bg-muted/40 transition-colors"
                       >
@@ -136,7 +135,7 @@ export function CategoryBreakdown({ categories }: CategoryBreakdownProps) {
                             </td>
                           </tr>
                         ))}
-                    </>
+                    </React.Fragment>
                   );
                 })}
                 <tr className="font-semibold text-xs border-t-2">

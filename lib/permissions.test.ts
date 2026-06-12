@@ -5,6 +5,7 @@ import {
   canEditCRA,
   canRecordVote,
   isChair,
+  canEditTreasury,
 } from "./permissions";
 
 describe("canEditAll", () => {
@@ -69,4 +70,28 @@ describe("isChair", () => {
   it("returns false for president", () => expect(isChair("president")).toBe(false));
   it("returns false for officer", () => expect(isChair("officer")).toBe(false));
   it("returns false for member", () => expect(isChair("member")).toBe(false));
+});
+
+describe("canEditTreasury", () => {
+  it("returns true for president", () => {
+    expect(canEditTreasury("president", "president")).toBe(true);
+  });
+
+  it("returns true for officer role (VP, secretary)", () => {
+    expect(canEditTreasury("officer", "vp")).toBe(true);
+    expect(canEditTreasury("officer", "secretary")).toBe(true);
+  });
+
+  it("returns true for the treasurer position regardless of role", () => {
+    expect(canEditTreasury("member", "treasurer")).toBe(true);
+  });
+
+  it("returns false for non-treasurer members", () => {
+    expect(canEditTreasury("member", "pool")).toBe(false);
+    expect(canEditTreasury("member", "social")).toBe(false);
+  });
+
+  it("returns false for committee chairs", () => {
+    expect(canEditTreasury("chair", "architecture")).toBe(false);
+  });
 });

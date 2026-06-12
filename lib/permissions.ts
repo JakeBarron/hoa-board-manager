@@ -64,3 +64,17 @@ export const canRecordVote = (role: PositionRole): boolean =>
  * @param role - The current user's position role
  */
 export const isChair = (role: PositionRole): boolean => role === "chair";
+
+/**
+ * Returns true if the user can create or modify treasury data.
+ * President and officers (VP, secretary) have edit access by explicit policy decision.
+ * The Treasurer position always has edit access regardless of role label.
+ *
+ * @param role         - The current user's position role
+ * @param positionName - The current user's position name
+ */
+export const canEditTreasury = (
+  role: PositionRole,
+  positionName: PositionName
+): boolean =>
+  role === "president" || role === "officer" || positionName === "treasurer";

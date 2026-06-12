@@ -18,8 +18,9 @@ Internal board management portal for an HOA. Also a portfolio project for Jake (
 | Backend | Supabase — Postgres DB + Auth + Storage |
 | Hosting | Vercel |
 | Package manager | pnpm |
-| Testing | Jest + React Testing Library (128 tests, all passing) |
+| Testing | Jest + React Testing Library (221 tests, all passing) |
 | Forms | react-hook-form + zod |
+| CSV parsing | PapaParse — browser-native, handles BOM; use for all client-side CSV work |
 
 ---
 
@@ -149,12 +150,21 @@ components/
     MeetingScheduleForm  — date picker to schedule a meeting (client)
     SettingRow           — generic editable setting row with inline save feedback (client)
     MeetingCadenceRow    — week-of-month + day-of-week dropdowns for meeting cadence (client)
+    FileUploadButton     — styled file picker (looks like a button, shows filename after pick); use for ALL file inputs — accept/label/onChange/resetKey props (client)
+    CategoryBreakdown    — expandable GL category table for treasury overview (client)
+    ActualsForm          — treasury YTD actuals + cash balance entry form (client)
+    CSVImportDialog      — 3-step Homeside GL CSV import: parse → preview → confirm (client)
+    AssessmentEditPanel  — inline assessment payment editor on properties table (client)
+    PropertiesView       — filterable property table with assessment status columns (client)
 
 lib/
-  permissions.ts   — pure ACL: canEditAll, canEditSection, isAdmin, canEditCRA, canRecordVote, isChair
+  permissions.ts   — pure ACL: canEditAll, canEditSection, isAdmin, canEditCRA, canRecordVote, isChair, canEditTreasury
   dates.ts         — getUpcomingMondays, getUpcomingMeetingDates, parseCadence,
                      describeCadence, formatMeetingDate
   reminder.ts      — buildReminderMailto (pure; pre-filled mailto: URL for missing submissions)
+  treasury/
+    csv-parser.ts  — parseBudgetCSV (PapaParse-based; state-machine for Homeside GL format)
+    actuals.ts     — latestActualsMap, buildCategoryBudgets (shared between /treasury and /treasury/actuals)
   supabase/
     client.ts      — browser Supabase client (Client Components)
     server.ts      — server Supabase client (Server Components / Actions)

@@ -61,10 +61,35 @@ export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess = () 
 
   if (step === "idle") {
     return (
-      <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Upload the Homeside GL CSV export. You will see a preview before anything is saved.
-        </p>
+      <div className="space-y-4">
+        <div className="rounded border bg-muted/30 p-4 text-sm space-y-2">
+          <p className="font-medium">Expected CSV format (Homeside GL export)</p>
+          <p className="text-muted-foreground">
+            The file must have a header row containing the month columns{" "}
+            <span className="font-mono text-xs">Apr … Mar</span> (fiscal year order), a{" "}
+            <span className="font-mono text-xs">GL Code</span> column (format{" "}
+            <span className="font-mono text-xs">XX-XXXX-XX</span>), an{" "}
+            <span className="font-mono text-xs">Account Description</span> column, and a{" "}
+            <span className="font-mono text-xs">2026 Budget</span> (or similar year) column.
+          </p>
+          <p className="text-muted-foreground">
+            Section header rows above the GL data rows set context — the parser recognizes{" "}
+            <span className="font-mono text-xs">Operating Accounts</span>,{" "}
+            <span className="font-mono text-xs">Reserve Accounts</span>,{" "}
+            <span className="font-mono text-xs">Income Accounts</span>,{" "}
+            <span className="font-mono text-xs">Expense Accounts</span>, and any category
+            name row in between (e.g. <span className="font-mono text-xs">G&A</span>,{" "}
+            <span className="font-mono text-xs">Pool</span>,{" "}
+            <span className="font-mono text-xs">Landscape</span>).
+          </p>
+          <a
+            href="/sample-budget.csv"
+            download
+            className="inline-flex items-center gap-1 text-primary underline underline-offset-2 text-xs"
+          >
+            Download sample CSV
+          </a>
+        </div>
         <FileUploadButton
           accept=".csv"
           label="Choose CSV File"

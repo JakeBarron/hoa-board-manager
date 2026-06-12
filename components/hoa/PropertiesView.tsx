@@ -42,6 +42,8 @@ interface PropertiesViewProps {
   assessments: AssessmentPayment[];
   /** Whether the current user can edit assessment payment status. */
   canEditAssessments: boolean;
+  /** Initial value for the assessment status filter, e.g. from URL searchParams. */
+  initialStatusFilter?: AssessmentStatus | "all";
 }
 
 /**
@@ -49,9 +51,9 @@ interface PropertiesViewProps {
  * When assessments are loaded and the user has edit rights, clicking a row
  * expands an inline AssessmentEditPanel.
  */
-export function PropertiesView({ lots, assessments, canEditAssessments }: PropertiesViewProps) {
+export function PropertiesView({ lots, assessments, canEditAssessments, initialStatusFilter = "all" }: PropertiesViewProps) {
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
-  const [statusFilter, setStatusFilter] = useState<AssessmentStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<AssessmentStatus | "all">(initialStatusFilter);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const handleReset = useCallback(() => {

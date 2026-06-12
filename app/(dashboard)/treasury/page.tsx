@@ -10,10 +10,9 @@ import type { CategoryBudgetSummary, AssessmentSummary } from "@/types/domain";
 import type {
   CashBalance,
   FiscalYear,
-  CategoryActual,
-  BudgetLineItem,
 } from "@/types/database";
 import { Button } from "@/components/ui/button";
+import { latestActualsMap, buildCategoryBudgets } from "@/lib/treasury/actuals";
 
 export const metadata = { title: "Treasury — HOA Board" };
 
@@ -24,51 +23,6 @@ function formatCents(cents: number): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(cents / 100);
-}
-
-/** Returns the most recent actuals per (category, account_type) combination. */
-function latestActualsMap(
-  actuals: CategoryActual[]
-): Map<string, CategoryActual> {
-  const map = new Map<string, CategoryActual>();
-  // actuals arrive ordered desc by as_of_date; first hit per key is the latest
-  for (const a of actuals) {
-    const key = `${a.category}:${a.account_type}`;
-    if (!map.has(key)) map.set(key, a);
-  }
-  return map;
-}
-
-/**
- * Groups budget line items into CategoryBudgetSummary records, joined with latest actuals.
- *
- * @param items - Raw budget line items for the fiscal year.
- * @param actualsMap - Map from "category:account_type" to the most recent CategoryActual.
- * @returns Array of CategoryBudgetSummary with summed budget amounts and line items.
- */
-function buildCategoryBudgets(
-  items: BudgetLineItem[],
-  actualsMap: Map<string, CategoryActual>
-): CategoryBudgetSummary[] {
-  const groups = new Map<string, CategoryBudgetSummary>();
-  for (const item of items) {
-    const key = `${item.category}:${item.account_type}`;
-    if (!groups.has(key)) {
-      const actual = actualsMap.get(key);
-      groups.set(key, {
-        category: item.category,
-        account_type: item.account_type,
-        budget_amount: 0,
-        ytd_actual: actual?.ytd_actual ?? 0,
-        as_of_date: actual?.as_of_date ?? null,
-        line_items: [],
-      });
-    }
-    const g = groups.get(key)!;
-    g.budget_amount += item.budget_amount;
-    g.line_items.push(item);
-  }
-  return Array.from(groups.values());
 }
 
 export default async function TreasuryPage() {

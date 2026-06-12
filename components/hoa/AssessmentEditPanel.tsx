@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { updateAssessmentPayment } from "@/actions/treasury";
 import type { AssessmentPayment, AssessmentStatus } from "@/types/database";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ interface AssessmentEditPanelProps {
  * Calls updateAssessmentPayment on save and invokes onClose on success.
  */
 export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelProps) {
+  const router = useRouter();
   const [status, setStatus] = useState<AssessmentStatus>(payment.status);
   const [amountPaid, setAmountPaid] = useState((payment.amount_paid / 100).toFixed(2));
   const [paymentReference, setPaymentReference] = useState(payment.payment_reference ?? "");
@@ -45,6 +47,7 @@ export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelPro
           paidAt || null,
           notes || null
         );
+        router.refresh();
         onClose();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Save failed");
@@ -58,7 +61,7 @@ export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelPro
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">Status</label>
           <Select value={status} onValueChange={(v) => setStatus(v as AssessmentStatus)}>
-            <SelectTrigger className="h-8 text-sm">
+            <SelectTrigger className="h-8 text-sm" aria-label="Status">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -71,8 +74,9 @@ export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelPro
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Amount Paid ($)</label>
+          <label htmlFor="ap-amount" className="text-xs font-medium text-muted-foreground">Amount Paid ($)</label>
           <Input
+            id="ap-amount"
             className="h-8 text-sm"
             value={amountPaid}
             onChange={(e) => setAmountPaid(e.target.value)}
@@ -81,8 +85,9 @@ export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelPro
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Payment Reference</label>
+          <label htmlFor="ap-reference" className="text-xs font-medium text-muted-foreground">Payment Reference</label>
           <Input
+            id="ap-reference"
             className="h-8 text-sm"
             value={paymentReference}
             onChange={(e) => setPaymentReference(e.target.value)}
@@ -91,8 +96,9 @@ export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelPro
         </div>
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Date Paid</label>
+          <label htmlFor="ap-paid-at" className="text-xs font-medium text-muted-foreground">Date Paid</label>
           <Input
+            id="ap-paid-at"
             type="date"
             className="h-8 text-sm"
             value={paidAt}
@@ -102,8 +108,9 @@ export function AssessmentEditPanel({ payment, onClose }: AssessmentEditPanelPro
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-muted-foreground">Notes</label>
+        <label htmlFor="ap-notes" className="text-xs font-medium text-muted-foreground">Notes</label>
         <Input
+          id="ap-notes"
           className="text-sm"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

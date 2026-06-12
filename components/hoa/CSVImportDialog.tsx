@@ -124,7 +124,7 @@ export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess }: CS
         {importError && <p className="text-sm text-destructive">{importError}</p>}
 
         <div className="flex gap-3">
-          <Button onClick={handleConfirm} disabled={isPending || parseResult.rows.length === 0}>
+          <Button onClick={handleConfirm} disabled={isPending || parseResult.rows.length === 0 || parseResult.errors.length > 0}>
             {isPending ? "Importing…" : `Import ${parseResult.rows.length} rows`}
           </Button>
           <Button variant="outline" onClick={handleReset} disabled={isPending}>

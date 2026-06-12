@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isChair, canEditTreasury } from "@/lib/permissions";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { PropertiesView } from "@/components/hoa/PropertiesView";
+import type { AssessmentStatus } from "@/types/database";
 
 export const metadata = {
   title: "Properties — HOA Board",
@@ -14,8 +15,13 @@ export const metadata = {
  * Fetches all properties and the current fiscal year's assessment payments.
  * Restricted to voting members; chairs are redirected.
  */
-export default async function PropertiesPage() {
+export default async function PropertiesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   noStore();
+  const { status: initialStatus } = await searchParams;
 
   const supabase = await createClient();
   const {
@@ -74,6 +80,7 @@ export default async function PropertiesPage() {
         lots={lots}
         assessments={assessments}
         canEditAssessments={canEditAssessments}
+        initialStatusFilter={(initialStatus as AssessmentStatus | undefined) ?? "all"}
       />
     </div>
   );

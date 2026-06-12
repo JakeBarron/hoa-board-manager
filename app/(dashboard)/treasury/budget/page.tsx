@@ -7,6 +7,7 @@ import { SectionCard } from "@/components/hoa/SectionCard";
 import { CSVImportDialog } from "@/components/hoa/CSVImportDialog";
 import { approveBudget, createFiscalYear, initializeAssessments } from "@/actions/treasury";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export const metadata = { title: "Budget — Treasury" };
 
@@ -145,19 +146,19 @@ export default async function BudgetPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-sm font-medium" htmlFor="label">Label (e.g. FY26)</label>
-                <input id="label" name="label" required className="w-full border rounded px-3 py-2 text-sm" />
+                <Input id="label" name="label" required />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium" htmlFor="assessment">Annual Assessment ($)</label>
-                <input id="assessment" name="assessment" type="number" step="0.01" required className="w-full border rounded px-3 py-2 text-sm" />
+                <Input id="assessment" name="assessment" type="number" step="0.01" required />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium" htmlFor="start_date">Start Date</label>
-                <input id="start_date" name="start_date" type="date" required defaultValue="2025-04-01" className="w-full border rounded px-3 py-2 text-sm" />
+                <Input id="start_date" name="start_date" type="date" required defaultValue="2025-04-01" />
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium" htmlFor="end_date">End Date</label>
-                <input id="end_date" name="end_date" type="date" required defaultValue="2026-03-31" className="w-full border rounded px-3 py-2 text-sm" />
+                <Input id="end_date" name="end_date" type="date" required defaultValue="2026-03-31" />
               </div>
             </div>
             <Button type="submit">Create Fiscal Year</Button>

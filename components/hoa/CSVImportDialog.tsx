@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useRef, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { parseBudgetCSV, type ParsedBudgetRow, type CSVParseResult } from "@/lib/treasury/csv-parser";
 import { importBudget } from "@/actions/treasury";
 import { Button } from "@/components/ui/button";
+import { FileUploadButton } from "@/components/hoa/FileUploadButton";
 
 interface CSVImportDialogProps {
   fiscalYearId: string;
@@ -28,11 +29,9 @@ export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess = () 
   const [parseResult, setParseResult] = useState<CSVParseResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [resetKey, setResetKey] = useState(0);
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleFile = async (file: File) => {
     const text = await file.text();
     const result = parseBudgetCSV(text, fiscalYearStart);
     setParseResult(result);
@@ -57,7 +56,7 @@ export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess = () 
     setStep("idle");
     setParseResult(null);
     setImportError(null);
-    if (fileRef.current) fileRef.current.value = "";
+    setResetKey((k) => k + 1);
   };
 
   if (step === "idle") {
@@ -66,13 +65,11 @@ export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess = () 
         <p className="text-sm text-muted-foreground">
           Upload the Homeside GL CSV export. You will see a preview before anything is saved.
         </p>
-        <input
-          ref={fileRef}
-          type="file"
+        <FileUploadButton
           accept=".csv"
+          label="Choose CSV File"
           onChange={handleFile}
-          className="text-sm"
-          aria-label="Choose CSV file"
+          resetKey={resetKey}
         />
       </div>
     );

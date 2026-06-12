@@ -23,3 +23,4 @@ export { PropertyTable } from "./PropertyTable";
 export { CategoryBreakdown } from "./CategoryBreakdown";
 export { ActualsForm } from "./ActualsForm";
 export { CSVImportDialog } from "./CSVImportDialog";
+export { FileUploadButton } from "./FileUploadButton";

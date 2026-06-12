@@ -14,7 +14,7 @@
 
 import fs from "fs";
 import path from "path";
-import { parse } from "csv-parse/sync";
+import Papa from "papaparse";
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -128,12 +128,9 @@ async function main() {
 
   const fileContent = fs.readFileSync(path.resolve(csvPath), "utf-8");
 
-  // csv-parse handles quoted multiline fields, escaped quotes, and trailing commas
-  const records = parse(fileContent, {
-    skip_empty_lines: true,
-    relax_column_count: true,
-    bom: true,
-  }) as string[][];
+  const { data: records } = Papa.parse<string[]>(fileContent, {
+    skipEmptyLines: true,
+  });
 
   // First row is headers
   const rows = records.slice(1);

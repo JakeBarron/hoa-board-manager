@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 interface CSVImportDialogProps {
   fiscalYearId: string;
   fiscalYearStart: string;
-  onSuccess: () => void;
+  /** Called after a successful import. Defaults to a no-op. */
+  onSuccess?: () => void;
 }
 
 type Step = "idle" | "preview" | "importing" | "done";
@@ -22,7 +23,7 @@ type Step = "idle" | "preview" | "importing" | "done";
  * @param fiscalYearStart - ISO date of the fiscal year start (e.g. "2025-04-01")
  * @param onSuccess       - Called after a successful import
  */
-export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess }: CSVImportDialogProps) {
+export function CSVImportDialog({ fiscalYearId, fiscalYearStart, onSuccess = () => {} }: CSVImportDialogProps) {
   const [step, setStep] = useState<Step>("idle");
   const [parseResult, setParseResult] = useState<CSVParseResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);

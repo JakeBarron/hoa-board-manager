@@ -93,7 +93,6 @@ export default async function BudgetPage() {
           <CSVImportDialog
             fiscalYearId={fy.id}
             fiscalYearStart={fy.start_date}
-            onSuccess={() => {}}
           />
         </SectionCard>
       )}

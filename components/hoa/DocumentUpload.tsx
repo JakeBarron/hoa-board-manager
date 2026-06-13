@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { saveDocument } from "@/actions/documents";
 import { Button } from "@/components/ui/button";
+import { FileUploadButton } from "@/components/hoa/FileUploadButton";
 import type { DocumentType } from "@/types/database";
 
 const TYPE_LABELS: Record<DocumentType, string> = {
@@ -33,6 +34,7 @@ export function DocumentUpload({ positionId }: DocumentUploadProps) {
   const [type, setType] = useState<DocumentType>("other");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resetKey, setResetKey] = useState(0);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -64,6 +66,7 @@ export function DocumentUpload({ positionId }: DocumentUploadProps) {
         setFile(null);
         setType("other");
         setIsOpen(false);
+        setResetKey((k) => k + 1);
         router.refresh();
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Upload failed.");
@@ -115,19 +118,13 @@ export function DocumentUpload({ positionId }: DocumentUploadProps) {
         </select>
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="doc-file" className="text-sm font-medium">
-          File <span className="text-destructive" aria-hidden="true">*</span>
-        </label>
-        <input
-          id="doc-file"
-          type="file"
-          accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          disabled={isPending}
-          className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1 file:text-sm file:font-medium disabled:opacity-50"
-        />
-      </div>
+      <FileUploadButton
+        accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
+        label="Choose File"
+        onChange={(files) => setFile(files[0] ?? null)}
+        disabled={isPending}
+        resetKey={resetKey}
+      />
 
       {error && (
         <p role="alert" className="text-xs text-destructive">

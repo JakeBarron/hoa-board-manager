@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { createArchitectureRequest } from "@/actions/architecture";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
+import { FileUploadButton } from "@/components/hoa/FileUploadButton";
 import { Button } from "@/components/ui/button";
 import type { ArchitectureDocType } from "@/types/database";
 
@@ -35,9 +36,8 @@ export default function NewArchitectureRequestPage() {
   const [fileEntries, setFileEntries] = useState<FileEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const addFiles = (files: FileList | null) => {
-    if (!files) return;
-    const newEntries = Array.from(files).map((file) => ({
+  const addFiles = (files: File[]) => {
+    const newEntries = files.map((file) => ({
       file,
       docType: "other" as ArchitectureDocType,
     }));
@@ -146,20 +146,13 @@ export default function NewArchitectureRequestPage() {
 
         <SectionCard title="Supporting Documents">
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="files" className="text-sm font-medium">
-                Attach files
-              </label>
-              <input
-                id="files"
-                type="file"
-                multiple
-                accept=".pdf,.jpg,.jpeg,.png,.docx,.doc"
-                disabled={isPending}
-                onChange={(e) => addFiles(e.target.files)}
-                className="block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border file:border-input file:bg-background file:px-3 file:py-1 file:text-sm file:font-medium disabled:opacity-50"
-              />
-            </div>
+            <FileUploadButton
+              accept=".pdf,.jpg,.jpeg,.png,.docx,.doc"
+              label="Add Files"
+              onChange={addFiles}
+              multiple
+              disabled={isPending}
+            />
 
             {fileEntries.length > 0 && (
               <ul className="divide-y divide-border">

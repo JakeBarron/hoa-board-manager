@@ -78,36 +78,34 @@ export function PreMeetingForm({
   };
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-1.5">
-        <p className="text-sm font-medium">Meeting date</p>
-        <div className="flex flex-wrap gap-2">
-          {upcomingMondays.map((date) => {
-            const active = date === selectedDate;
-            return (
-              <button
-                key={date}
-                type="button"
-                onClick={() => handleDateSelect(date)}
-                className={`cursor-pointer rounded-full border px-3 py-1 text-sm transition-colors ${
-                  active
-                    ? "border-primary/40 bg-primary/8 text-primary font-medium"
-                    : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
-                }`}
-              >
-                {formatMeetingDate(date)}
-              </button>
-            );
-          })}
-        </div>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-muted-foreground shrink-0">Meeting:</span>
+        {upcomingMondays.map((date) => {
+          const active = date === selectedDate;
+          return (
+            <button
+              key={date}
+              type="button"
+              onClick={() => handleDateSelect(date)}
+              className={`cursor-pointer rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                active
+                  ? "border-primary/40 bg-primary/8 text-primary font-medium"
+                  : "border-border text-muted-foreground hover:border-border/80 hover:text-foreground"
+              }`}
+            >
+              {formatMeetingDate(date)}
+            </button>
+          );
+        })}
       </div>
 
       {savedContent !== null ? (
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-green-700">
-            ✓ Update submitted for {formatMeetingDate(selectedDate)}
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-green-700">
+            ✓ Submitted for {formatMeetingDate(selectedDate)}
           </p>
-          <div className="rounded-md border border-border bg-muted/40 p-3 text-sm whitespace-pre-wrap">
+          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm whitespace-pre-wrap">
             {savedContent}
           </div>
           <Button
@@ -116,34 +114,24 @@ export function PreMeetingForm({
             size="sm"
             onClick={() => setSavedContent(null)}
           >
-            Edit update
+            Edit
           </Button>
         </div>
       ) : (
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            label={`Your update for ${formatMeetingDate(selectedDate)}`}
-            htmlFor="pre-meeting-content"
-            error={errors.content?.message}
-            required
-          >
-            <textarea
-              id="pre-meeting-content"
-              rows={6}
-              placeholder={
-                "What did you accomplish this month?\nAny ongoing issues or vendor updates?\nAnything for the board to discuss?"
-              }
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
-              {...register("content")}
-            />
-          </FormField>
-
-          <Button type="submit" disabled={isPending}>
-            {isPending
-              ? "Submitting…"
-              : existingContent
-                ? "Update"
-                : "Submit update"}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
+          <textarea
+            id="pre-meeting-content"
+            rows={3}
+            placeholder="What did you accomplish? Any issues or vendor updates? Anything for the board to discuss?"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+            aria-label={`Your update for ${formatMeetingDate(selectedDate)}`}
+            {...register("content")}
+          />
+          {errors.content?.message && (
+            <p className="text-xs text-destructive">{errors.content.message}</p>
+          )}
+          <Button type="submit" size="sm" disabled={isPending}>
+            {isPending ? "Submitting…" : existingContent ? "Update" : "Submit update"}
           </Button>
         </form>
       )}

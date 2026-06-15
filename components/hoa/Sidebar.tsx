@@ -60,6 +60,8 @@ export function Sidebar({ position }: SidebarProps) {
           <ul className="space-y-0.5">
             <SidebarLink item={{ label: "Home", href: "/dashboard" }} active={isActive("/dashboard")} />
             <SidebarLink item={{ label: "My Office", href: myOfficeHref }} active={isActive(myOfficeHref)} />
+            {/* Treasury is read-only for chairs — the page hides edit controls behind canEditTreasury */}
+            <SidebarLink item={{ label: "Treasury", href: "/treasury" }} active={isActive("/treasury")} />
           </ul>
         </nav>
         <SidebarFooter displayName={displayName} />

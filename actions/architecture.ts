@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { isChair } from "@/lib/permissions";
 import type { VoteOutcome, ArchitectureStatus, ArchitectureDocType } from "@/types/database";
 
 /**
@@ -71,11 +72,13 @@ export async function createArchitectureRequest(
 
   const { data: position } = await supabase
     .from("positions")
-    .select("id")
+    .select("id, role")
     .eq("email", user.email!)
     .single();
 
   if (!position) throw new Error("Position not found");
+  // Committee chairs work architecture items through /committee/[chair], not here.
+  if (isChair(position.role)) throw new Error("Committee chairs cannot create architecture requests");
 
   const { data: request, error: requestError } = await supabase
     .from("architecture_requests")

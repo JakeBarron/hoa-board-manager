@@ -103,9 +103,10 @@ app/
   (dashboard)/               — all authenticated pages share DashboardLayout
     layout.tsx               — fetches position from DB, renders Sidebar, guards auth
     dashboard/               — Home: board-wide summary (arch requests + active CRA)
-    meetings/                — board meeting list (upcoming + past, status badges)
+    meetings/                — board meeting list (upcoming + past, status badges); officer+ schedule/cancel/reschedule via inline modal
     meetings/new/            — schedule a meeting — officer+ only
     architecture/            — architecture requests list with status badges + president vote form
+    architecture/new/        — create request + upload homeowner PDF to Storage (officer+); multi-file FileUploadButton
     board/[position]/        — My Office for board members: todos, minutes preview, pre-meeting form
     board/[position]/minutes/     — minutes list with Drive links + export
     board/[position]/minutes/new/ — WYSIWYG editor → docx export → Drive URL
@@ -114,24 +115,35 @@ app/
     pre-meeting/             — officer/president aggregate view of all updates (members + chairs redirect to own page)
     agenda/                  — auto-generated HOA agenda from pre-meeting updates + mailto: reminders
     amenities/               — Pool, Clubhouse, Tennis (STUB — placeholder)
-    map/                     — Interactive neighborhood map (STUB — placeholder)
-    admin/positions/         — president-only: lists positions + emails (edit form not yet built)
+    map/                     — interactive neighborhood lot map (MapView + NeighborhoodMap); voting members only
+    cra/                     — Capital Reserve projects list (STUB — EmptyState); cra/new is a placeholder, no cra/[id] yet
+    documents/               — document library with signed-URL downloads
+    admin/positions/         — president-only: lists positions + emails with inline edit (PositionEditRow)
     admin/settings/          — president-only: configurable settings (quorum, HOA name, meeting cadence)
-    treasury/                — financial dashboard: cash on hand, income/expense vs budget, assessment collection (SPEC WRITTEN — not yet built)
+    treasury/                — financial dashboard: cash on hand, income/expense vs budget, assessment collection
     treasury/actuals/        — monthly YTD actuals + cash balance entry form (canEditTreasury only)
     treasury/budget/         — budget management + Homeside GL CSV import (canEditTreasury only)
-    properties/              — homeowner table; will gain assessment payment status columns when treasury is built
-  architecture/[id]/         — PUBLIC detail page (outside dashboard — no auth required)
+    properties/              — homeowner table with assessment payment status columns (PropertiesView)
+  (auth)/confirm-reset/      — password-reset confirmation page
+  (auth)/update-password/    — set-new-password page
+  architecture/[id]/         — PUBLIC detail page (outside dashboard — no auth required); board members see inline PDF preview
   api/minutes/[id]/export/   — GET route: converts minutes HTML → .docx download
 
 actions/
-  auth.ts          — signIn / signOut
-  architecture.ts  — recordVote (president only)
-  meetings.ts      — createMeeting
+  auth.ts          — signIn, signOut, requestPasswordReset, confirmPasswordReset, updatePassword
+  architecture.ts  — recordVote (president only), createArchitectureRequest
+  meetings.ts      — createMeeting, startOrResumeMeeting, callToOrder, updateAttendance,
+                     cancelMeeting, rescheduleMeeting, saveMeetingMinutes, adjournMeeting,
+                     saveMeetingDriveUrl, addMeetingDocument, recordReminderSent
   minutes.ts       — saveMinutes, updateMinutesDriveUrl
   pre-meeting.ts   — submitPreMeetingUpdate (upsert on position_id + meeting_date)
   settings.ts      — updateSetting (president only)
-  todos.ts         — addTodo, toggleTodo, deleteTodo
+  todos.ts         — addTodo, toggleTodo, deleteTodo, createActionItem
+  documents.ts     — saveDocument, deleteDocument
+  motions.ts       — createMotion, secondMotion, recordVotes, closeMotion
+  positions.ts     — updatePosition (president only; updates auth user + sends reset)
+  treasury.ts      — createFiscalYear, importBudget, approveBudget, saveActuals,
+                     initializeAssessments, updateAssessmentPayment
 
 components/
   ui/                    — shadcn/ui primitives (owned source, editable)
@@ -147,15 +159,20 @@ components/
     MinutesForm          — write minutes → save → export docx → paste Drive URL (client)
     PreMeetingForm       — date quick-select + textarea, upserts on submit; accepts returnPath prop for date-change navigation (client)
     VoteForm             — inline collapsed/expanded vote form for president (client)
-    MeetingScheduleForm  — date picker to schedule a meeting (client)
+    ScheduleMeetingModal — modal to schedule / reschedule a meeting (client)
+    MeetingRunnerModal   — secretary-controlled meeting runner: motions, voting, live minutes (client)
     SettingRow           — generic editable setting row with inline save feedback (client)
     MeetingCadenceRow    — week-of-month + day-of-week dropdowns for meeting cadence (client)
-    FileUploadButton     — styled file picker (looks like a button, shows filename after pick); use for ALL file inputs — accept/label/onChange/resetKey props (client)
+    PositionEditRow      — inline edit of position display name + email; updates auth user (client)
+    FileUploadButton     — styled file picker; onChange receives File[] (always array); supports multiple — use for ALL file inputs — accept/label/onChange/resetKey/multiple props (client)
+    DocumentUpload       — upload a document to the library via FileUploadButton (client)
+    MapView / NeighborhoodMap — interactive lot map: clickable polygons + InfoCard with property details (client)
     CategoryBreakdown    — expandable GL category table for treasury overview (client)
     ActualsForm          — treasury YTD actuals + cash balance entry form (client)
     CSVImportDialog      — 3-step Homeside GL CSV import: parse → preview → confirm (client)
     AssessmentEditPanel  — inline assessment payment editor on properties table (client)
-    PropertiesView       — filterable property table with assessment status columns (client)
+    PropertiesView / PropertyTable — filterable property table with assessment status columns (client)
+    InlineConfirm / InlineDateInput — small inline confirm + date-entry helpers (client)
 
 lib/
   permissions.ts   — pure ACL: canEditAll, canEditSection, isAdmin, canEditCRA, canRecordVote, isChair, canEditTreasury
@@ -262,18 +279,23 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - `/pre-meeting` — officer/president aggregate view of all updates by date; members + chairs redirected to own page
 - `/agenda` — HOA meeting agenda (call to order → approve minutes → board reports → committee reports → new business → adjourn); officer+ get mailto: reminder for missing submissions
 - `/meetings/[id]` — meeting runner (non-realtime, secretary-controlled): motions, voting, live minutes via Tiptap, `.docx` export, Drive URL storage; amendment form for post-adjournment corrections
-- `/admin/positions` — lists positions + emails (edit form not built — see `docs/specs/admin-positions-edit.md`)
+- `/meetings` — list with status badges; officer+ schedule via inline modal (`MeetingScheduleForm`) and can cancel/reschedule existing meetings
+- `/architecture/new` — board members create requests + upload the homeowner's PDF to Supabase Storage (multi-file, `FileUploadButton`)
+- `/admin/positions` — lists positions + emails with inline edit (`PositionEditRow`); changing an email updates the Supabase auth user and sends a password reset
 - `/admin/settings` — configurable settings with inline save; meeting cadence uses dropdown UI
+- `/map` — interactive neighborhood lot map (`MapView` + `NeighborhoodMap`); click a polygon to see property details; voting members only, chairs redirected
+- `/treasury`, `/treasury/actuals`, `/treasury/budget` — financial dashboard (cash on hand, budget vs actuals, assessment collection), YTD actuals + cash balance entry, and Homeside GL CSV import; all authenticated users read, `canEditTreasury` writes
+- `/documents` — document library with signed-URL downloads
+- Password reset — `/confirm-reset` + `/update-password` pages backed by `actions/auth.ts`
 
 ### Stubbed (page exists, placeholder only)
-- `/amenities` — Pool, Clubhouse, Tennis (widgets not yet built)
-- `/map` — Interactive neighborhood map (SVG + property data not yet built)
-- `/cra` — EmptyState (see `docs/specs/cra-projects.md`)
-- `/cra/new` — placeholder
-- No `/cra/[id]` page yet
+- `/amenities` — Pool, Clubhouse, Tennis (`EmptyState`; no spec written yet)
+- `/cra` — `EmptyState` (see `docs/specs/cra-projects.md`)
+- `/cra/new` — "Coming soon" placeholder; no `/cra/[id]` page yet. Schema (`cra_projects`, `cra_quotes`, `cra_updates`, `cra_documents`) is ready and the dashboard reads active projects, but there is no create/edit/quote/update UI.
 
-### Spec written, not yet started
-- `/treasury` — financial dashboard (cash on hand, budget vs actuals, assessment collection); see `docs/superpowers/specs/2026-06-03-treasury-dashboard-design.md`
+### Not started
+- Operating Calendar — treasurer's request: key annual dates + deliverables with templates. No route, component, or schema yet.
+- Pre-Meeting / Agenda merge — fold the pre-meeting updates page into the agenda (low priority; spec file not yet written)
 
 ### Schema-ready, no UI
 - Motions/voting UI — `motions` and `motion_votes` tables exist; the meeting runner uses them but there is no dedicated motion-proposal or per-member voting UI (secretary records everything)
@@ -321,7 +343,7 @@ Pages that show date pickers should:
 ```bash
 pnpm dev          # start dev server (run from /Users/jake/dev/hoa-board-manager)
 pnpm build        # production build
-pnpm test         # run Jest (128 tests)
+pnpm test         # run Jest (221 tests)
 pnpm type-check   # tsc --noEmit
 pnpm seed         # seed 13 position accounts against .env.local (e2e project)
 pnpm lint         # ESLint

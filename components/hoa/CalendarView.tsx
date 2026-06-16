@@ -39,12 +39,15 @@ export function CalendarView({ items }: CalendarViewProps) {
   const legend = useMemo(() => areaLegend(items), [items]);
   const [activeArea, setActiveArea] = useState<string | null>(null);
 
-  const visible = activeArea ? items.filter((i) => i.areaId === activeArea) : items;
+  const visible = useMemo(
+    () => (activeArea ? items.filter((i) => i.areaId === activeArea) : items),
+    [items, activeArea]
+  );
   const groups = useMemo(() => groupByMonth(visible), [visible]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
+      <div role="group" aria-label="Filter by area" className="flex flex-wrap gap-2">
         {legend.map((a) => {
           const active = activeArea === a.id;
           return (
@@ -58,6 +61,7 @@ export function CalendarView({ items }: CalendarViewProps) {
               aria-pressed={active}
             >
               <span
+                aria-hidden="true"
                 className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: a.color }}
               />
@@ -79,9 +83,9 @@ export function CalendarView({ items }: CalendarViewProps) {
               {group.items.map((it) => (
                 <li key={it.occurrenceId} className="flex items-start gap-3 px-4 py-3">
                   <span
+                    aria-hidden="true"
                     className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: it.areaColor }}
-                    title={it.areaName}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline justify-between gap-x-3">

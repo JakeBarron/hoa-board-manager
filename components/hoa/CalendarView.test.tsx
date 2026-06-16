@@ -25,4 +25,13 @@ describe("CalendarView", () => {
     expect(screen.getByText("Pool opens")).toBeInTheDocument();
     expect(screen.queryByText("Legal retainer due")).not.toBeInTheDocument();
   });
+
+  it("clears the filter when the active area is clicked again", async () => {
+    render(<CalendarView items={items} />);
+    const poolButton = screen.getByRole("button", { name: /^Pool$/ });
+    await userEvent.click(poolButton);
+    await userEvent.click(poolButton);
+    expect(screen.getByText("Pool opens")).toBeInTheDocument();
+    expect(screen.getByText("Legal retainer due")).toBeInTheDocument();
+  });
 });

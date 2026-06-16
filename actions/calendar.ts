@@ -125,6 +125,13 @@ export async function saveEvent(input: EventInput): Promise<string | undefined> 
   if (!input.title.trim()) return "Title is required.";
   if (!input.areaId) return "An area is required.";
   if (input.occurrences.length === 0) return "Add at least one month.";
+  if (
+    input.occurrences.some(
+      (o) => o.dayOfMonth !== null && (o.dayOfMonth < 1 || o.dayOfMonth > 31)
+    )
+  ) {
+    return "Day must be between 1 and 31.";
+  }
 
   const { supabase, positionId, denied } = await resolveEditor();
   if (denied) return denied;

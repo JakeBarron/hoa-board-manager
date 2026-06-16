@@ -204,12 +204,17 @@ function AreaEditor({
           disabled={disabled || !name.trim()}
           onClick={() =>
             run(async () => {
+              const nextSortOrder =
+                Math.max(0, ...areas.map((a) => a.sort_order)) + 1;
               const msg = await saveArea({
                 name,
                 color,
-                sortOrder: areas.length + 1,
+                sortOrder: nextSortOrder,
               });
-              if (!msg) setName("");
+              if (!msg) {
+                setName("");
+                setColor("#0f766e");
+              }
               return msg;
             })
           }
@@ -339,11 +344,13 @@ function EventEditor({
             ))}
           </select>
           <Input
+            aria-label="Title"
             placeholder="Title"
             value={draft.title}
             onChange={(e) => setDraft({ ...draft, title: e.target.value })}
           />
           <Input
+            aria-label="Responsible party"
             placeholder="Responsible party (optional)"
             value={draft.responsibleParty ?? ""}
             onChange={(e) =>
@@ -351,6 +358,7 @@ function EventEditor({
             }
           />
           <Input
+            aria-label="Notes"
             placeholder="Notes (optional)"
             value={draft.notes ?? ""}
             onChange={(e) =>
@@ -358,6 +366,7 @@ function EventEditor({
             }
           />
           <Input
+            aria-label="Template URL"
             placeholder="Template URL (optional)"
             value={draft.templateUrl ?? ""}
             onChange={(e) =>

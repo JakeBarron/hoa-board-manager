@@ -8,10 +8,10 @@ import { canEditAll } from "@/lib/permissions";
 import { buildCalendarItems } from "@/lib/calendar/calendar";
 import type { PositionRole } from "@/types/database";
 
-export const metadata = { title: "Operating Calendar — HOA Board" };
+export const metadata = { title: "Annual Cycle — HOA Board" };
 
 /**
- * Operating Calendar — board-wide annual cycle, readable by everyone
+ * Annual Cycle — board-wide operating calendar, readable by everyone
  * (including committee chairs, so there is no chair redirect here).
  */
 export default async function CalendarPage() {
@@ -39,7 +39,7 @@ export default async function CalendarPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Operating Calendar"
+        title="Annual Cycle"
         subtitle="The HOA's recurring annual cycle across all responsibility areas."
         action={
           role && canEditAll(role) ? (

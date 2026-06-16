@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/hoa/PageHeader";
 import { CalendarAdmin } from "@/components/hoa/CalendarAdmin";
 import type { PositionRole } from "@/types/database";
 
-export const metadata = { title: "Manage Calendar — HOA Board" };
+export const metadata = { title: "Manage Annual Cycle — HOA Board" };
 
 /** Admin CRUD for the operating calendar — president/officer only. */
 export default async function ManageCalendarPage() {
@@ -38,10 +38,10 @@ export default async function ManageCalendarPage() {
         href="/calendar"
         className="inline-block text-sm text-primary hover:underline"
       >
-        ← Back to calendar
+        ← Back to Annual Cycle
       </Link>
       <PageHeader
-        title="Manage Calendar"
+        title="Manage Annual Cycle"
         subtitle="Add, edit, and remove responsibility areas and events."
       />
       <CalendarAdmin

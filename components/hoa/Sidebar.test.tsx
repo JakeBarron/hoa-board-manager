@@ -75,15 +75,17 @@ describe("Sidebar — board member view", () => {
 });
 
 describe("Sidebar — chair view", () => {
-  it("shows Dashboard, My Office, and read-only Treasury in the primary nav", () => {
+  it("shows Dashboard, My Office, Treasury, and Annual Cycle in the primary nav", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
     const primaryNav = screen.getByRole("navigation", { name: "Primary navigation" });
     const links = within(primaryNav).getAllByRole("link");
-    expect(links).toHaveLength(3);
+    expect(links).toHaveLength(4);
     expect(links[0]).toHaveTextContent("Home");
     expect(links[1]).toHaveTextContent("My Office");
     expect(links[2]).toHaveTextContent("Treasury");
     expect(links[2]).toHaveAttribute("href", "/treasury");
+    expect(links[3]).toHaveTextContent("Annual Cycle");
+    expect(links[3]).toHaveAttribute("href", "/calendar");
   });
 
   it("My Office link points to /committee/[name] for chairs", () => {

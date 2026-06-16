@@ -37,8 +37,8 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: editable
-          ? "min-h-[240px] rounded-b-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring prose prose-sm max-w-none"
-          : "prose prose-sm max-w-none px-1 py-2",
+          ? "min-h-[240px] rounded-b-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring"
+          : "px-1 py-2 text-sm",
       },
     },
   });

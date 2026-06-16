@@ -14,7 +14,7 @@ interface NavItem {
 
 const FUNCTION_NAV: NavItem[] = [
   { label: "Meetings", href: "/meetings" },
-  { label: "Calendar", href: "/calendar" },
+  { label: "Annual Cycle", href: "/calendar" },
   { label: "Architecture", href: "/architecture" },
   { label: "Documents", href: "/documents" },
   { label: "CRA Projects", href: "/cra" },
@@ -63,7 +63,7 @@ export function Sidebar({ position }: SidebarProps) {
             <SidebarLink item={{ label: "My Office", href: myOfficeHref }} active={isActive(myOfficeHref)} />
             {/* Treasury is read-only for chairs — the page hides edit controls behind canEditTreasury */}
             <SidebarLink item={{ label: "Treasury", href: "/treasury" }} active={isActive("/treasury")} />
-            <SidebarLink item={{ label: "Calendar", href: "/calendar" }} active={isActive("/calendar")} />
+            <SidebarLink item={{ label: "Annual Cycle", href: "/calendar" }} active={isActive("/calendar")} />
           </ul>
         </nav>
         <SidebarFooter displayName={displayName} />

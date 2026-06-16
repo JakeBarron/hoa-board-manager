@@ -100,6 +100,10 @@ export function MeetingListClient({
     setModalMeetingId(null);
   };
 
+  const modalMeeting = modalMeetingId
+    ? [...upcoming, ...past].find((m) => m.id === modalMeetingId)
+    : null;
+
   return (
     <>
       <div className="space-y-6">
@@ -164,13 +168,14 @@ export function MeetingListClient({
         />
       )}
 
-      {modalMeetingId && (
+      {modalMeetingId && modalMeeting && (
         <MeetingRunnerModal
           positions={positions}
           currentPositionId={currentPositionId}
           existingMeeting={resolvedExistingMeeting}
           onClose={handleClose}
           meetingId={modalMeetingId}
+          meetingDate={modalMeeting.meeting_date}
           driveFolder={driveFolder}
           hoaName={hoaName}
         />

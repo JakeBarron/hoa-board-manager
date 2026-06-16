@@ -8,7 +8,8 @@ import { TodoList } from "@/components/hoa/TodoList";
 import { PreMeetingForm } from "@/components/hoa/PreMeetingForm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getUpcomingMeetingDates, formatMeetingDate } from "@/lib/dates";
+import { formatMeetingDate } from "@/lib/dates";
+import { canEditAll } from "@/lib/permissions";
 import type { PositionName, Todo } from "@/types/database";
 import { POSITION_LABELS } from "@/lib/positions";
 
@@ -19,17 +20,15 @@ type BoardPositionName = Extract<
 
 interface Props {
   params: Promise<{ position: string }>;
-  searchParams: Promise<{ date?: string }>;
 }
 
 /**
  * Per-position board dashboard.
  * Shows recent todos, a minutes preview, and — when viewing your own page —
- * the pre-meeting update form for the next scheduled meeting.
+ * the pre-meeting update form for the single upcoming ("NEXT") meeting.
  */
-export default async function BoardPositionPage({ params, searchParams }: Props) {
+export default async function BoardPositionPage({ params }: Props) {
   const { position } = await params;
-  const { date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   const {
@@ -50,10 +49,8 @@ export default async function BoardPositionPage({ params, searchParams }: Props)
 
   const isOwnPage = currentPosition.id === targetPosition.id;
 
-  // Fetch todos and — if on own page — meeting dates + existing update in parallel
-  const today = new Date().toISOString().split("T")[0];
-
-  const [todosResult, scheduledMeetingsResult, cadenceResult] = await Promise.all([
+  // Fetch todos and — if on own page — the NEXT meeting in parallel
+  const [todosResult, nextMeetingResult] = await Promise.all([
     supabase
       .from("todos")
       .select("*")
@@ -64,35 +61,24 @@ export default async function BoardPositionPage({ params, searchParams }: Props)
     isOwnPage
       ? supabase
           .from("meetings")
-          .select("meeting_date")
-          .gte("meeting_date", today)
+          .select("id, meeting_date")
           .in("status", ["pending", "in_progress"])
           .order("meeting_date", { ascending: true })
-          .limit(3)
-      : Promise.resolve({ data: null }),
-    isOwnPage
-      ? supabase.from("settings").select("value").eq("key", "meeting_cadence").single()
+          .limit(1)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
   const todos = todosResult.data;
-  const cadence = cadenceResult.data?.value ?? "3:2";
-  const scheduledDates = (scheduledMeetingsResult.data ?? []).map(
-    (m: { meeting_date: string }) => m.meeting_date
-  );
-  const meetingDates =
-    scheduledDates.length > 0 ? scheduledDates : getUpcomingMeetingDates(cadence, 3);
-  const nextMeetingDate = (dateParam && meetingDates.includes(dateParam))
-    ? dateParam
-    : meetingDates[0];
+  const nextMeeting = nextMeetingResult.data as { id: string; meeting_date: string } | null;
 
-  // Fetch existing pre-meeting update only when on own page
-  const existingUpdate = isOwnPage
+  // Fetch existing pre-meeting update only when on own page and a meeting exists
+  const existingUpdate = isOwnPage && nextMeeting
     ? await supabase
         .from("pre_meeting_updates")
         .select("content")
         .eq("position_id", currentPosition.id)
-        .eq("meeting_date", nextMeetingDate)
+        .eq("meeting_id", nextMeeting.id)
         .maybeSingle()
         .then((r) => r.data)
     : null;
@@ -150,13 +136,18 @@ export default async function BoardPositionPage({ params, searchParams }: Props)
       </div>
 
       {isOwnPage && (
-        <SectionCard title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}>
+        <SectionCard
+          title={
+            nextMeeting
+              ? `Pre-Meeting Update — ${formatMeetingDate(nextMeeting.meeting_date)}`
+              : "Pre-Meeting Update"
+          }
+        >
           <PreMeetingForm
             positionId={currentPosition.id}
-            selectedDate={nextMeetingDate}
-            upcomingMondays={meetingDates}
+            meetingId={nextMeeting?.id ?? null}
             existingContent={existingUpdate?.content ?? undefined}
-            returnPath={`/board/${position}`}
+            canSchedule={canEditAll(currentPosition.role)}
           />
         </SectionCard>
       )}

@@ -39,7 +39,7 @@ export default async function DashboardPage() {
       .limit(5),
     supabase
       .from("meetings")
-      .select("meeting_date")
+      .select("id, meeting_date")
       .gte("meeting_date", today)
       .in("status", ["pending", "in_progress"])
       .order("meeting_date", { ascending: true })
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
 
   const pendingRequests = (archResult.data ?? []) as Pick<ArchitectureRequest, "id" | "address" | "status" | "created_at">[];
   const activeProjects = (craResult.data ?? []) as Pick<CRAProject, "id" | "name" | "status">[];
-  const nextMeeting = meetingResult.data as { meeting_date: string } | null;
+  const nextMeeting = meetingResult.data as { id: string; meeting_date: string } | null;
 
   return (
     <div className="space-y-6">
@@ -65,7 +65,7 @@ export default async function DashboardPage() {
             <span className="font-medium">Next meeting: </span>
             <span>{formatMeetingDate(nextMeeting.meeting_date)}</span>
             <span className="mx-2 text-muted-foreground">·</span>
-            <Link href="/agenda" className="text-primary hover:underline">
+            <Link href={`/meetings/${nextMeeting.id}`} className="text-primary hover:underline">
               View agenda
             </Link>
           </>

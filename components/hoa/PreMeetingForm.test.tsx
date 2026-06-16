@@ -6,34 +6,32 @@ jest.mock("@/actions/pre-meeting", () => ({
   submitPreMeetingUpdate: jest.fn().mockResolvedValue(undefined),
 }));
 
-import { useRouter } from "next/navigation";
-
-jest.mock("next/navigation", () => ({
-  useRouter: jest.fn(),
-}));
-
-jest.mock("@/lib/dates", () => ({
-  formatMeetingDate: (d: string) => `Meeting: ${d}`,
-}));
-
 const { submitPreMeetingUpdate } = jest.requireMock("@/actions/pre-meeting");
 
 const defaultProps = {
   positionId: "pos-1",
-  selectedDate: "2026-06-01",
-  upcomingMondays: ["2026-06-01", "2026-06-08", "2026-06-15"],
+  meetingId: "meeting-1",
   existingContent: undefined,
 };
 
 describe("PreMeetingForm", () => {
   beforeEach(() => jest.clearAllMocks());
 
-  describe("date selector", () => {
-    it("renders a button for each upcoming Monday", () => {
-      render(<PreMeetingForm {...defaultProps} />);
-      expect(screen.getByRole("button", { name: "Meeting: 2026-06-01" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Meeting: 2026-06-08" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Meeting: 2026-06-15" })).toBeInTheDocument();
+  describe("no meeting scheduled", () => {
+    it("shows the empty state and no textarea when meetingId is null", () => {
+      render(<PreMeetingForm positionId="pos-1" meetingId={null} />);
+      expect(screen.getByText(/No meeting is scheduled yet/i)).toBeInTheDocument();
+      expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    });
+
+    it("shows a schedule link when canSchedule is true", () => {
+      render(<PreMeetingForm positionId="pos-1" meetingId={null} canSchedule />);
+      expect(screen.getByRole("link", { name: /Schedule a meeting/i })).toHaveAttribute("href", "/meetings");
+    });
+
+    it("hides the schedule link when canSchedule is false", () => {
+      render(<PreMeetingForm positionId="pos-1" meetingId={null} />);
+      expect(screen.queryByRole("link", { name: /Schedule a meeting/i })).not.toBeInTheDocument();
     });
   });
 
@@ -54,14 +52,14 @@ describe("PreMeetingForm", () => {
       });
     });
 
-    it("calls submitPreMeetingUpdate with the correct args on valid submit", async () => {
+    it("calls submitPreMeetingUpdate with positionId, meetingId, and content", async () => {
       render(<PreMeetingForm {...defaultProps} />);
       await userEvent.type(screen.getByRole("textbox"), "Pool pump repaired.");
       fireEvent.click(screen.getByRole("button", { name: "Submit update" }));
       await waitFor(() => {
         expect(submitPreMeetingUpdate).toHaveBeenCalledWith(
           "pos-1",
-          "2026-06-01",
+          "meeting-1",
           "Pool pump repaired."
         );
       });
@@ -92,46 +90,6 @@ describe("PreMeetingForm", () => {
       await userEvent.click(screen.getByRole("button", { name: "Edit" }));
       expect(screen.getByRole("textbox")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Update" })).toBeInTheDocument();
-    });
-  });
-
-  describe("date selector navigation", () => {
-    it("pushes to returnPath with date when a different date is selected", async () => {
-      const push = jest.fn();
-      (useRouter as jest.Mock).mockReturnValue({ push });
-
-      render(
-        <PreMeetingForm
-          positionId="pos-1"
-          selectedDate="2026-06-02"
-          upcomingMondays={["2026-06-02", "2026-06-09", "2026-06-16"]}
-          returnPath="/board/pool"
-        />
-      );
-
-      // formatMeetingDate is mocked to return "Meeting: <date>"
-      const dateButton = screen.getByRole("button", { name: "Meeting: 2026-06-09" });
-      await userEvent.click(dateButton);
-
-      expect(push).toHaveBeenCalledWith("/board/pool?date=2026-06-09");
-    });
-
-    it("defaults returnPath to /pre-meeting when not provided", async () => {
-      const push = jest.fn();
-      (useRouter as jest.Mock).mockReturnValue({ push });
-
-      render(
-        <PreMeetingForm
-          positionId="pos-1"
-          selectedDate="2026-06-02"
-          upcomingMondays={["2026-06-02", "2026-06-09"]}
-        />
-      );
-
-      const dateButton = screen.getByRole("button", { name: "Meeting: 2026-06-09" });
-      await userEvent.click(dateButton);
-
-      expect(push).toHaveBeenCalledWith("/pre-meeting?date=2026-06-09");
     });
   });
 });

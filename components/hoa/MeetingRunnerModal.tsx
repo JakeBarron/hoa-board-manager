@@ -11,7 +11,9 @@ import {
   cancelMeeting,
   saveMeetingMinutes,
   adjournMeeting,
+  seedMeetingScaffold,
 } from "@/actions/meetings";
+import type { NewBusinessItem } from "@/lib/agenda";
 import {
   createMotion,
   secondMotion,
@@ -44,6 +46,7 @@ interface MemberVote {
 
 /** Internal state machine views for the modal. */
 type ModalView =
+  | "newBusiness"
   | "attendance"
   | "callToOrder"
   | "running"
@@ -61,8 +64,10 @@ export interface MeetingRunnerModalProps {
   existingMeeting: { id: string; status: "pending" | "in_progress" } | null;
   /** Called when the modal should close (meeting cancelled or export done) */
   onClose: () => void;
-  /** The meeting ID returned by startOrResumeMeeting, already known before render */
+  /** The meeting ID of the meeting being run, already known before render */
   meetingId: string;
+  /** ISO date (YYYY-MM-DD) of the meeting being run */
+  meetingDate: string;
   /** Google Drive folder URL from settings — shown in export panel as upload destination */
   driveFolder?: string;
   /** HOA name from settings — used to suggest a minutes document title */
@@ -142,6 +147,108 @@ function buildVoteResultText(
 }
 
 // ─── Sub-panels ───────────────────────────────────────────────────────────────
+
+interface NewBusinessPanelProps {
+  items: NewBusinessItem[];
+  onAdd: (item: NewBusinessItem) => void;
+  onRemove: (index: number) => void;
+  onContinue: () => void;
+}
+
+/**
+ * First step of the start wizard: the person starting the meeting lists any new
+ * business to discuss. Items fold into the agenda scaffold under "New Business".
+ * Skippable — continue with zero items if there is nothing new.
+ */
+function NewBusinessPanel({ items, onAdd, onRemove, onContinue }: NewBusinessPanelProps) {
+  const [title, setTitle] = useState("");
+  const [note, setNote] = useState("");
+
+  const handleAdd = () => {
+    if (!title.trim()) return;
+    onAdd({ title: title.trim(), note: note.trim() || null });
+    setTitle("");
+    setNote("");
+  };
+
+  return (
+    <div className="flex flex-col gap-6 max-w-lg mx-auto py-8 px-4">
+      <div>
+        <h2 className="text-xl font-semibold">New Business</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          List anything new to discuss at this meeting. These appear on the agenda.
+          You can skip this if there is nothing new.
+        </p>
+      </div>
+
+      {items.length > 0 && (
+        <ul className="rounded-md border border-border divide-y divide-border">
+          {items.map((item, i) => (
+            <li key={i} className="flex items-start justify-between gap-3 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">{item.title}</p>
+                {item.note && <p className="text-xs text-muted-foreground">{item.note}</p>}
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => onRemove(i)}>
+                Remove
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="space-y-3">
+        <div className="space-y-1.5">
+          <label htmlFor="nb-title" className="text-sm font-medium">
+            Topic
+          </label>
+          <input
+            id="nb-title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder="e.g. Fence vendor quote"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="nb-note" className="text-sm font-medium">
+            Note (optional)
+          </label>
+          <input
+            id="nb-note"
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+            placeholder="e.g. review 3 bids"
+            className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </div>
+        <Button variant="outline" size="sm" onClick={handleAdd} disabled={!title.trim()}>
+          Add item
+        </Button>
+      </div>
+
+      <div className="flex justify-end">
+        <Button onClick={onContinue}>
+          {items.length > 0 ? "Continue to Attendance" : "Skip — no new business"}
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 interface AttendancePanelProps {
   positions: Position[];
@@ -900,8 +1007,8 @@ function TopBar({
  * Manages a state machine through: attendance → callToOrder → running →
  * voting / actionItem → adjourn → export.
  *
- * The server page calls startOrResumeMeeting before rendering this component,
- * so the meetingId is always available on mount.
+ * The meeting being run is chosen before this component renders, so the
+ * meetingId is always available on mount.
  *
  * @param positions          - All 8 board positions
  * @param currentPositionId  - The logged-in user's position UUID
@@ -915,24 +1022,39 @@ export function MeetingRunnerModal({
   existingMeeting,
   onClose,
   meetingId,
+  meetingDate,
   driveFolder,
   hoaName,
 }: MeetingRunnerModalProps) {
   const votingPositions = positions.filter((p) => p.is_voting_member);
 
-  const initialView: ModalView =
-    existingMeeting?.status === "in_progress" ? "running" : "attendance";
+  const isResuming = existingMeeting?.status === "in_progress";
+  const initialView: ModalView = isResuming ? "running" : "newBusiness";
 
   const [view, setView] = useState<ModalView>(initialView);
   const [presentIds, setPresentIds] = useState<Set<string>>(
     () => new Set(positions.map((p) => p.id))
   );
   const [startedAt, setStartedAt] = useState<string | null>(null);
-  const [meetingDate] = useState(new Date().toISOString().split("T")[0]);
   const [minutesContent, setMinutesContent] = useState("");
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // New business entered before call to order, persisted to sessionStorage so a
+  // mid-wizard refresh doesn't lose it (it isn't written to the DB until the
+  // scaffold is seeded at call to order). The modal only mounts client-side, so
+  // reading sessionStorage in the initializer is safe.
+  const newBusinessKey = `meeting-new-business-${meetingId}`;
+  const [newBusiness, setNewBusiness] = useState<NewBusinessItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const stored = window.sessionStorage.getItem(newBusinessKey);
+      return stored ? (JSON.parse(stored) as NewBusinessItem[]) : [];
+    } catch {
+      return [];
+    }
+  });
 
   const editorKey = useRef(0);
   const [editorContent, setEditorContent] = useState("");
@@ -940,6 +1062,37 @@ export function MeetingRunnerModal({
   const elapsed = useElapsedTimer(startedAt);
 
   const QUORUM_REQUIRED = 5;
+
+  /** Updates new business state and mirrors it to sessionStorage. */
+  const persistNewBusiness = (items: NewBusinessItem[]) => {
+    setNewBusiness(items);
+    try {
+      sessionStorage.setItem(newBusinessKey, JSON.stringify(items));
+    } catch {
+      // ignore unavailable storage
+    }
+  };
+
+  // On resume, load the meeting's existing minutes into the editor instead of a
+  // blank document, so edits append rather than overwrite.
+  useEffect(() => {
+    if (!isResuming) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { scaffold } = await seedMeetingScaffold(meetingId, []);
+        if (cancelled) return;
+        setMinutesContent(scaffold);
+        setEditorContent(scaffold);
+        editorKey.current += 1;
+      } catch {
+        // leave the editor empty on failure; the secretary can still type
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isResuming, meetingId]);
 
   const togglePresent = (id: string) => {
     const next = new Set(presentIds);
@@ -963,6 +1116,16 @@ export function MeetingRunnerModal({
     startTransition(async () => {
       try {
         await callToOrder(meetingId, calledBy, secondedBy, Array.from(presentIds));
+        // Build + persist the agenda scaffold and seed the editor with it.
+        const { scaffold } = await seedMeetingScaffold(meetingId, newBusiness);
+        setMinutesContent(scaffold);
+        setEditorContent(scaffold);
+        editorKey.current += 1;
+        try {
+          sessionStorage.removeItem(newBusinessKey);
+        } catch {
+          // ignore unavailable storage
+        }
         setStartedAt(new Date().toISOString());
         setView("running");
       } catch (err) {
@@ -1070,6 +1233,17 @@ export function MeetingRunnerModal({
       )}
 
       <div className="flex-1 overflow-y-auto">
+        {view === "newBusiness" && (
+          <NewBusinessPanel
+            items={newBusiness}
+            onAdd={(item) => persistNewBusiness([...newBusiness, item])}
+            onRemove={(index) =>
+              persistNewBusiness(newBusiness.filter((_, i) => i !== index))
+            }
+            onContinue={() => setView("attendance")}
+          />
+        )}
+
         {view === "attendance" && (
           <AttendancePanel
             positions={positions}

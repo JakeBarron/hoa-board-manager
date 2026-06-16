@@ -8,6 +8,7 @@ import { SectionCard } from "@/components/hoa/SectionCard";
 import { StatusBadge } from "@/components/hoa/StatusBadge";
 import { EmptyState } from "@/components/hoa/EmptyState";
 import { AddAmendmentForm } from "./AddAmendmentForm";
+import { MeetingPrep } from "./MeetingPrep";
 import type {
   Motion,
   MotionVote,
@@ -141,15 +142,7 @@ export default async function MeetingDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [
-    positionResult,
-    meetingResult,
-    allPositionsResult,
-    motionsResult,
-    meetingDocsResult,
-    quorumSettingResult,
-    actionItemsResult,
-  ] = await Promise.all([
+  const [positionResult, meetingResult] = await Promise.all([
     supabase
       .from("positions")
       .select("id, name, role")
@@ -158,33 +151,10 @@ export default async function MeetingDetailPage({
     supabase
       .from("meetings")
       .select(
-        "id, meeting_date, status, called_by, seconded_by, started_at, adjourned_at, minutes_drive_url, storage_path, present_positions"
+        "id, meeting_date, status, called_by, seconded_by, started_at, adjourned_at, minutes_drive_url, storage_path, present_positions, reminder_sent_at"
       )
       .eq("id", id)
       .single(),
-    supabase.from("positions").select("id, name, display_name"),
-    supabase
-      .from("motions")
-      .select(
-        "id, title, description, proposed_by, seconded_by, status, quorum_met, closed_at"
-      )
-      .eq("meeting_id", id)
-      .order("closed_at", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("meeting_documents")
-      .select("id, name, drive_url, storage_path, doc_type, amendment_number")
-      .eq("meeting_id", id)
-      .order("amendment_number", { ascending: true, nullsFirst: false }),
-    supabase
-      .from("settings")
-      .select("value")
-      .eq("key", "quorum_required")
-      .single(),
-    supabase
-      .from("todos")
-      .select("id, title, position_id, completed, due_date")
-      .eq("meeting_id", id)
-      .order("created_at", { ascending: true }),
   ]);
 
   const currentPosition = positionResult.data;
@@ -193,6 +163,48 @@ export default async function MeetingDetailPage({
 
   const meeting = meetingResult.data;
   if (!meeting) redirect("/meetings");
+
+  // A pending meeting shows the prep view (agenda + checklist + Start). Motions,
+  // votes, and documents only exist once the meeting has started, so skip those
+  // fetches entirely for pending meetings.
+  if (meeting.status === "pending") {
+    return (
+      <MeetingPrep
+        meetingId={meeting.id}
+        meetingDate={meeting.meeting_date}
+        reminderSentAt={meeting.reminder_sent_at}
+        currentPositionId={currentPosition.id}
+        currentRole={currentPosition.role}
+      />
+    );
+  }
+
+  const [allPositionsResult, motionsResult, meetingDocsResult, quorumSettingResult, actionItemsResult] =
+    await Promise.all([
+      supabase.from("positions").select("id, name, display_name"),
+      supabase
+        .from("motions")
+        .select(
+          "id, title, description, proposed_by, seconded_by, status, quorum_met, closed_at"
+        )
+        .eq("meeting_id", id)
+        .order("closed_at", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("meeting_documents")
+        .select("id, name, drive_url, storage_path, doc_type, amendment_number")
+        .eq("meeting_id", id)
+        .order("amendment_number", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "quorum_required")
+        .single(),
+      supabase
+        .from("todos")
+        .select("id, title, position_id, completed, due_date")
+        .eq("meeting_id", id)
+        .order("created_at", { ascending: true }),
+    ]);
 
   const allPositions = (allPositionsResult.data ?? []) as {
     id: string;

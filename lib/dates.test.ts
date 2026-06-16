@@ -4,6 +4,7 @@ import {
   parseCadence,
   describeCadence,
   getUpcomingMeetingDates,
+  pickNextMeetingDate,
 } from "./dates";
 
 describe("getUpcomingMondays", () => {
@@ -120,5 +121,30 @@ describe("getUpcomingMeetingDates", () => {
     const from = new Date("2026-05-25T00:00:00"); // Monday
     const result = getUpcomingMeetingDates("bad", 1, from);
     expect(result[0]).toBe("2026-05-25");
+  });
+});
+
+describe("pickNextMeetingDate", () => {
+  // 3rd Tuesdays in 2026: Jun 16, Jul 21, Aug 18, Sep 15
+  const from = new Date("2026-06-16T00:00:00");
+
+  it("picks the next cadence date after the adjourned meeting", () => {
+    const result = pickNextMeetingDate("3:2", "2026-06-16", "2026-06-16", from);
+    expect(result).toBe("2026-07-21");
+  });
+
+  it("falls back to the default cadence when cadence is empty", () => {
+    const result = pickNextMeetingDate("", "2026-06-16", "2026-06-16", from);
+    expect(result).toBe("2026-07-21");
+  });
+
+  it("uses the adjourned date as the floor when it is later than today", () => {
+    const result = pickNextMeetingDate("3:2", "2026-08-18", "2026-06-16", from);
+    expect(result).toBe("2026-09-15");
+  });
+
+  it("returns null when no candidate falls after the floor", () => {
+    const result = pickNextMeetingDate("3:2", "2027-01-01", "2026-06-16", from);
+    expect(result).toBeNull();
   });
 });

@@ -159,3 +159,26 @@ export function getUpcomingMeetingDates(
   }
   return results;
 }
+
+/**
+ * Picks the next meeting date strictly after both today and a reference date,
+ * following the configured cadence. Used to auto-schedule the next meeting when
+ * the queue empties on adjournment. Empty/invalid cadence falls back to the
+ * default (3rd Tuesday) via getUpcomingMeetingDates.
+ *
+ * @param cadenceValue - Cadence string e.g. "3:2"; empty falls back to "3:2"
+ * @param afterDate    - The just-adjourned meeting's date (YYYY-MM-DD)
+ * @param todayValue   - Today's date (YYYY-MM-DD) in the app timezone
+ * @param from         - Reference date for generating candidates (default today)
+ * @returns The next cadence date strictly after the later of today/afterDate, or null
+ */
+export function pickNextMeetingDate(
+  cadenceValue: string,
+  afterDate: string,
+  todayValue: string,
+  from = new Date()
+): string | null {
+  const floor = afterDate > todayValue ? afterDate : todayValue;
+  const candidates = getUpcomingMeetingDates(cadenceValue || "3:2", 4, from);
+  return candidates.find((d) => d > floor) ?? null;
+}

@@ -8,6 +8,7 @@ Design decisions and open questions. Update the status when work begins or compl
 |---|---|---|
 | [CRA Projects](./cra-projects.md) | Not started — schema ready (`cra_projects`, `cra_quotes`, `cra_updates`, `cra_documents`); dashboard reads active projects, but `/cra` is an EmptyState, `/cra/new` is a placeholder, and there is no `/cra/[id]`. | High |
 | Operating Calendar | Feature request (no spec file yet) — key annual dates + deliverables with templates; requested by treasurer. Nothing built. | Medium |
+| [Feature Backlog (VP intake)](./feature-backlog.md) | Captured, none greenlit — 14 briefs from the VP's idea list (RSVP/quorum, vendor DB, chair history, clubhouse rental, delinquency follow-up, property counts, budget viz, social playbooks, **office knowledge base**, templates, access vault, bylaw list, lake). Promote a brief to its own spec when scheduled. | Intake |
 | Pre-Meeting / Agenda Merge | Not started — fold the pre-meeting updates page into the agenda; agenda feeds the meeting runner. **Spec file not yet written.** | Low |
 | Amenities (Pool / Clubhouse / Tennis) | Not started — `/amenities` is an EmptyState; no spec written. | Low |
 | Motions / voting UI | Schema-ready, no dedicated UI — `motions` + `motion_votes` exist and the meeting runner uses them, but there is no standalone motion-proposal or per-member voting interface (secretary records everything). | Low |

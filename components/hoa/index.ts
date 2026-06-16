@@ -26,3 +26,4 @@ export { CSVImportDialog } from "./CSVImportDialog";
 export { FileUploadButton } from "./FileUploadButton";
 export { CalendarView } from "./CalendarView";
 export { CalendarAdmin } from "./CalendarAdmin";
+export { UpcomingCalendarWidget } from "./UpcomingCalendarWidget";

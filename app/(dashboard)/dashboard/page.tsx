@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
+import { UpcomingCalendarWidget } from "@/components/hoa/UpcomingCalendarWidget";
 import { formatMeetingDate } from "@/lib/dates";
+import { buildCalendarItems, upcomingItems } from "@/lib/calendar/calendar";
 import type { ArchitectureRequest, CRAProject } from "@/types/database";
 
 export const metadata = {
@@ -24,7 +26,7 @@ export default async function DashboardPage() {
   const today = new Date().toISOString().split("T")[0];
 
   // Fetch summary data in parallel
-  const [archResult, craResult, meetingResult] = await Promise.all([
+  const [archResult, craResult, meetingResult, areasResult, eventsResult, occResult] = await Promise.all([
     supabase
       .from("architecture_requests")
       .select("id, address, status, created_at")
@@ -45,11 +47,18 @@ export default async function DashboardPage() {
       .order("meeting_date", { ascending: true })
       .limit(1)
       .maybeSingle(),
+    supabase.from("responsibility_areas").select("*"),
+    supabase.from("calendar_events").select("*"),
+    supabase.from("event_occurrences").select("*"),
   ]);
 
   const pendingRequests = (archResult.data ?? []) as Pick<ArchitectureRequest, "id" | "address" | "status" | "created_at">[];
   const activeProjects = (craResult.data ?? []) as Pick<CRAProject, "id" | "name" | "status">[];
   const nextMeeting = meetingResult.data as { meeting_date: string } | null;
+
+  const upcoming = upcomingItems(
+    buildCalendarItems(areasResult.data ?? [], eventsResult.data ?? [], occResult.data ?? [])
+  ).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -130,6 +139,8 @@ export default async function DashboardPage() {
             </ul>
           )}
         </SectionCard>
+
+        <UpcomingCalendarWidget items={upcoming} />
       </div>
     </div>
   );

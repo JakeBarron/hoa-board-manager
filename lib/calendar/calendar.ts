@@ -30,6 +30,12 @@ const MONTH_NAMES = [
 ];
 
 /**
+ * Sort key for month-end (null-day) deadlines: one past the largest valid day
+ * (31) so they always sort after any numbered day within their month.
+ */
+const DAY_SORT_LAST = 32;
+
+/**
  * Returns the last calendar day (28–31) of a 1-based month in a given year.
  * Uses JS Date's day-0 rollover: day 0 of month N is the last day of month N-1.
  *
@@ -117,7 +123,10 @@ export function groupByMonth(
       items: byMonth
         .get(month)!
         .slice()
-        .sort((a, b) => (a.dayOfMonth ?? 99) - (b.dayOfMonth ?? 99)),
+        .sort(
+          (a, b) =>
+            (a.dayOfMonth ?? DAY_SORT_LAST) - (b.dayOfMonth ?? DAY_SORT_LAST)
+        ),
     }));
 }
 

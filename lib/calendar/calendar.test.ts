@@ -78,6 +78,9 @@ describe("groupByMonth", () => {
     ]);
     expect(groups[0].items.map((i) => i.title)).toEqual(["first", "end"]);
   });
+  it("returns an empty array when there are no items", () => {
+    expect(groupByMonth([])).toEqual([]);
+  });
 });
 
 describe("upcomingItems", () => {

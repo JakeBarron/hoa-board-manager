@@ -153,7 +153,14 @@ export function MeetingListClient({
           <SectionCard title="Past">
             <ul className="divide-y divide-border">
               {past.map((m) => (
-                <MeetingRow key={m.id} meeting={m} canSchedule={canSchedule} />
+                <MeetingRow
+                  key={m.id}
+                  meeting={m}
+                  canSchedule={canSchedule}
+                  canRun={canRun}
+                  onStartMeeting={handleStartMeeting}
+                  startError={startErrorRowId === m.id ? startError ?? undefined : undefined}
+                />
               ))}
             </ul>
           </SectionCard>

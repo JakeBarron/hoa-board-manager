@@ -12,6 +12,7 @@ import {
   saveMeetingMinutes,
   adjournMeeting,
   seedMeetingScaffold,
+  loadMeetingRunnerState,
 } from "@/actions/meetings";
 import type { NewBusinessItem } from "@/lib/agenda";
 import {
@@ -1073,20 +1074,25 @@ export function MeetingRunnerModal({
     }
   };
 
-  // On resume, load the meeting's existing minutes into the editor instead of a
-  // blank document, so edits append rather than overwrite.
+  // On resume, restore the meeting's saved minutes, attendance, and start time
+  // so the editor appends rather than overwrites and vote panels use the real
+  // attendance instead of defaulting to everyone present.
   useEffect(() => {
     if (!isResuming) return;
     let cancelled = false;
     (async () => {
       try {
-        const { scaffold } = await seedMeetingScaffold(meetingId, []);
+        const state = await loadMeetingRunnerState(meetingId);
         if (cancelled) return;
-        setMinutesContent(scaffold);
-        setEditorContent(scaffold);
+        if (state.presentPositionIds.length > 0) {
+          setPresentIds(new Set(state.presentPositionIds));
+        }
+        setStartedAt(state.startedAt);
+        setMinutesContent(state.minutesContent);
+        setEditorContent(state.minutesContent);
         editorKey.current += 1;
       } catch {
-        // leave the editor empty on failure; the secretary can still type
+        // leave defaults on failure; the secretary can still type
       }
     })();
     return () => {

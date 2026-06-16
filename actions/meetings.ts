@@ -223,6 +223,37 @@ export async function seedMeetingScaffold(
 }
 
 /**
+ * Loads the runtime state needed to resume an in-progress meeting in the runner:
+ * the current minutes HTML, the recorded attendance, and the start time (for the
+ * elapsed timer). Used when re-entering a meeting that is already underway so the
+ * modal restores attendance and minutes instead of resetting to defaults.
+ *
+ * @param meetingId - UUID of the in-progress meeting being resumed
+ * @returns The saved minutes, present position ids, and started_at timestamp
+ */
+export async function loadMeetingRunnerState(meetingId: string): Promise<{
+  minutesContent: string;
+  presentPositionIds: string[];
+  startedAt: string | null;
+}> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("meetings")
+    .select("minutes_content, present_positions, started_at")
+    .eq("id", meetingId)
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  return {
+    minutesContent: data.minutes_content ?? "",
+    presentPositionIds: (data.present_positions ?? []) as string[],
+    startedAt: data.started_at ?? null,
+  };
+}
+
+/**
  * Updates which positions are currently marked present. Called during the
  * attendance step and any time attendance changes on the fly during the meeting.
  *

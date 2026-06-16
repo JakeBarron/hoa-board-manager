@@ -20,6 +20,12 @@ const adjournedMeeting = {
   status: "adjourned" as const,
 };
 
+const inProgressMeeting = {
+  id: "meeting-3",
+  meeting_date: "2026-07-08",
+  status: "in_progress" as const,
+};
+
 describe("MeetingRow", () => {
   beforeEach(() => jest.clearAllMocks());
 
@@ -84,6 +90,33 @@ describe("MeetingRow", () => {
       );
       await userEvent.click(screen.getByRole("button", { name: /start meeting/i }));
       expect(onStartMeeting).toHaveBeenCalledWith("meeting-1", "pending");
+    });
+
+    it("shows a Resume Meeting button for in-progress meetings", () => {
+      render(
+        <MeetingRow
+          meeting={inProgressMeeting}
+          canSchedule={false}
+          canRun={true}
+          onStartMeeting={jest.fn()}
+        />
+      );
+      expect(screen.getByRole("button", { name: /resume meeting/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /start meeting/i })).not.toBeInTheDocument();
+    });
+
+    it("calls onStartMeeting with 'in_progress' when Resume is clicked", async () => {
+      const onStartMeeting = jest.fn();
+      render(
+        <MeetingRow
+          meeting={inProgressMeeting}
+          canSchedule={false}
+          canRun={true}
+          onStartMeeting={onStartMeeting}
+        />
+      );
+      await userEvent.click(screen.getByRole("button", { name: /resume meeting/i }));
+      expect(onStartMeeting).toHaveBeenCalledWith("meeting-3", "in_progress");
     });
 
     it("displays startError below the row", () => {

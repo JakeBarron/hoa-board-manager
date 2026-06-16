@@ -1,8 +1,47 @@
 # Operating Calendar — Spec
 
-> **Status:** Designed, not built. Design session completed 2026-06-15 (grill-me
-> interview). Schema/routes/components not yet written. **Blocked on:** Jake red-lining
-> the seed draft below + confirming the annual-meeting day and a few specific dates.
+> **Status:** Designed, ready to build. Design session completed 2026-06-15 (grill-me),
+> refined 2026-06-15 (brainstorming — open data questions resolved, see "Resolved
+> decisions"). Schema/routes/components not yet written. **No longer blocked:** the seed
+> draft ships as-is in `0019` and Jake red-lines it post-deploy via the admin CRUD UI.
+
+## Resolved decisions (2026-06-15 brainstorming)
+
+- **Seed strategy:** the draft below ships as-is in `0019` (clearly-delineated, easy-to-edit
+  block). Jake corrects any wrong data **post-deploy via admin CRUD** — which is exactly why
+  CRUD is in v1. The migration is **not** blocked on a red-line.
+- **Annual meeting dropped from seed:** the `Board | Annual HOA meeting held` event is
+  **removed**. The annual meeting will surface in the calendar via a future
+  **meetings→calendar integration** (scheduling a meeting makes it appear) — see fast-follow.
+  Prep/notice tasks (Board "begin preparation", Secretary "mail notice", Newsletter items)
+  **stay** — they are operational tasks, not the meeting itself.
+- **Secretary of State filing:** locked to **March 1** (`month=3, day_of_month=1`).
+- **"Upcoming" wraps the year:** the dashboard widget + page upcoming-sort roll past Dec 31
+  into next year's earliest events so the widget never empties in Q4. NOTE this makes the
+  page's **month grouping (plain Jan–Dec order)** and the widget's **upcoming sort (wrapping)**
+  two distinct orderings — keep them separate.
+- **Free-text responsible parties** ("Gibbs", "Executive Board", "Kids Social") stay as
+  free text, editable via CRUD.
+
+### Build defaults (documented so parallel agents don't each re-decide)
+
+- **Color** = a **hex string** (e.g. `#3b82f6`) on `responsibility_areas.color`, rendered via
+  inline `style` on area dots/badges/filter chips. Tailwind v4 `@theme` tokens are build-time
+  fixed, so admin-editable colors must be free values, not utility classes.
+- **`calendar_events.area_id`** is `not null` with **`on delete restrict`** — an area with
+  events cannot be deleted (CRUD surfaces a friendly error). `event_occurrences` keep
+  `on delete cascade` from their parent event.
+- **Seed mechanism:** insert areas first; insert events with
+  `area_id = (select id from responsibility_areas where name = …)`; insert occurrences with
+  `event_id = (select id from calendar_events where title = …)`. Event titles are unique in
+  the draft, so the lookups are unambiguous.
+- **RLS editor check:** add a `security definer` helper `is_calendar_editor()` mirroring
+  `0018`'s `is_treasury_editor()`, returning true for `role in ('president','officer')`.
+- **Helpers** stay pure with **no `date-fns`** in v1 (it lands with the grid fast-follow):
+  - `effectiveDate(occ, year)` → `day_of_month ?? lastDayOfMonth(year, month)`, last day via
+    `new Date(year, month, 0).getDate()`.
+  - `upcomingOccurrences(occurrences, today)` → year-wrapping ascending sort (+ wrap-case test).
+  - `groupByMonth(occurrences)` → plain Jan–Dec calendar order (no wrap).
 
 ## What it is
 
@@ -158,7 +197,7 @@ responsible parties, months, and the few specific days.**
 | Clubhouse | Fall deep clean (if needed) | {9} | — | Clubhouse Chair | |
 | Homeside | Legal retainer due | {1} | — | Homeside | |
 | Homeside | Annual dues letter prepared for mailing | {2} | — | Homeside | due by 3/1; Homeside mails to residents |
-| Homeside | Secretary of State filing due | {3} | 1 | Homeside | sheet bucketed in Feb; due 3/1 — confirm |
+| Homeside | Secretary of State filing due | {3} | 1 | Homeside | due 3/1 |
 | Homeside | Dues letter & invoice received by residents | {3} | 1 | Homeside | |
 | Homeside | Insurance renewal | {5} | — | Homeside | |
 | Homeside | Annual backflow | {6} | — | Homeside | Christy → Adams to schedule |
@@ -171,7 +210,6 @@ responsible parties, months, and the few specific days.**
 | Treasurer | Draft budget ready to mail w/ annual meeting notice | {2} | — | Treasurer | else post to website for resident review |
 | Treasurer | Transfer FYE surplus to Reserve before March close | {3} | — | Treasurer / Homeside | |
 | Board | Begin preparation for annual HOA meeting | {2} | — | Executive Board | |
-| Board | Annual HOA meeting held | {3} | — | Board | **confirm exact day/rule** |
 | Board | Plan fall assessment notice (if needed) | {7} | — | Membership & Homeside | |
 | Secretary | Mail annual-meeting notice to residents | {3} | — | Secretary | slate + proxy ballot + draft-budget info; Homeside mails 10–30 days prior |
 | Newsletter | Annual meeting coming up | {3} | — | Newsletter | |
@@ -188,10 +226,10 @@ responsible parties, months, and the few specific days.**
 | Social | Annual 5K run & Halloween events | {10} | — | Social | |
 | Residents | Annual HOA dues due | {4} | 1 | Residents | late after Apr 30; mail or pay online to Homeside |
 
-**Open data questions for Jake:** (1) exact annual-meeting day/rule; (2) Secretary of
-State — Feb or Mar 1?; (3) any events that should carry a specific day I defaulted to
-month-end; (4) confirm "Gibbs" / "Executive Board" / "Kids Social" stay as free-text
-responsible parties.
+**Open data questions — RESOLVED (2026-06-15):** (1) annual meeting → dropped from seed,
+deferred to meetings→calendar integration; (2) Secretary of State → **March 1**; (3) any
+month-end defaults that should carry a specific day → left as month-end, Jake fixes via CRUD
+post-deploy; (4) "Gibbs" / "Executive Board" / "Kids Social" → confirmed free text.
 
 ---
 
@@ -205,9 +243,12 @@ responsible parties.
 5. Admin CRUD — create/edit/delete events (+ occurrences) and areas; president/officer.
 6. Dashboard widget — "top ~5 upcoming" by effective date from today.
 
-**Fast-follow:** completion (`event_occurrence_completions` + mark-done UI + overdue/done
-coloring + year navigation) → the actual **month-grid calendar** view (tabs) using
-`date-fns`.
+**Fast-follow (not v1):**
+- Completion (`event_occurrence_completions` + mark-done UI + overdue/done coloring + year
+  navigation).
+- The actual **month-grid calendar** view (tabs) using `date-fns`.
+- **Meetings→calendar integration** — scheduling a meeting (meetings feature) surfaces it on
+  the calendar, replacing the dropped static "annual HOA meeting held" event.
 
 ## Suggested reading order for the implementer
 

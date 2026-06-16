@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isChair, canEditAll } from "@/lib/permissions";
@@ -33,6 +34,12 @@ export default async function ManageCalendarPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/calendar"
+        className="inline-block text-sm text-primary hover:underline"
+      >
+        ← Back to calendar
+      </Link>
       <PageHeader
         title="Manage Calendar"
         subtitle="Add, edit, and remove responsibility areas and events."

@@ -51,8 +51,8 @@ describe("buildMeetingScaffold", () => {
   it("renders submitted updates and a placeholder for missing ones", () => {
     const html = buildMeetingScaffold(baseInput());
     expect(html).toContain("Operating balance is $42,000.");
-    // Pool submitted nothing → placeholder under its heading
-    expect(html).toContain("<h3>Pool</h3><p><em>No update submitted.</em></p>");
+    // Pool submitted nothing → dash placeholder under its heading
+    expect(html).toContain("<h3>Pool</h3><p>—</p>");
   });
 
   it("links prior minutes when a URL is present", () => {

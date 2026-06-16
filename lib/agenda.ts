@@ -94,7 +94,7 @@ function renderReportSection(heading: string, reports: ScaffoldReport[]): string
     .map((r) => {
       const body = r.content && r.content.trim().length > 0
         ? `<p>${escapeMultiline(r.content)}</p>`
-        : `<p><em>No update submitted.</em></p>`;
+        : `<p>—</p>`;
       return `<h3>${escapeHtml(r.label)}</h3>${body}`;
     })
     .join("");

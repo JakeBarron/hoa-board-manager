@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/hoa/StatusBadge";
 import { EmptyState } from "@/components/hoa/EmptyState";
 import { AddAmendmentForm } from "./AddAmendmentForm";
 import { MeetingPrep } from "./MeetingPrep";
+import { StartMeetingButton } from "./StartMeetingButton";
 import type {
   Motion,
   MotionVote,
@@ -179,36 +180,45 @@ export default async function MeetingDetailPage({
     );
   }
 
-  const [allPositionsResult, motionsResult, meetingDocsResult, quorumSettingResult, actionItemsResult] =
-    await Promise.all([
-      supabase.from("positions").select("id, name, display_name"),
-      supabase
-        .from("motions")
-        .select(
-          "id, title, description, proposed_by, seconded_by, status, quorum_met, closed_at"
-        )
-        .eq("meeting_id", id)
-        .order("closed_at", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("meeting_documents")
-        .select("id, name, drive_url, storage_path, doc_type, amendment_number")
-        .eq("meeting_id", id)
-        .order("amendment_number", { ascending: true, nullsFirst: false }),
-      supabase
-        .from("settings")
-        .select("value")
-        .eq("key", "quorum_required")
-        .single(),
-      supabase
-        .from("todos")
-        .select("id, title, position_id, completed, due_date")
-        .eq("meeting_id", id)
-        .order("created_at", { ascending: true }),
-    ]);
+  const [
+    allPositionsResult,
+    motionsResult,
+    meetingDocsResult,
+    quorumSettingResult,
+    actionItemsResult,
+    runnerSettingsResult,
+  ] = await Promise.all([
+    supabase.from("positions").select("id, name, role, is_voting_member, display_name"),
+    supabase
+      .from("motions")
+      .select(
+        "id, title, description, proposed_by, seconded_by, status, quorum_met, closed_at"
+      )
+      .eq("meeting_id", id)
+      .order("closed_at", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("meeting_documents")
+      .select("id, name, drive_url, storage_path, doc_type, amendment_number")
+      .eq("meeting_id", id)
+      .order("amendment_number", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "quorum_required")
+      .single(),
+    supabase
+      .from("todos")
+      .select("id, title, position_id, completed, due_date")
+      .eq("meeting_id", id)
+      .order("created_at", { ascending: true }),
+    supabase.from("settings").select("key, value").in("key", ["hoa_name", "drive_folder_url"]),
+  ]);
 
   const allPositions = (allPositionsResult.data ?? []) as {
     id: string;
     name: PositionName;
+    role: string;
+    is_voting_member: boolean;
     display_name: string | null;
   }[];
 
@@ -310,6 +320,21 @@ export default async function MeetingDetailPage({
 
   const isOfficerOrAbove = canEditAll(currentPosition.role);
 
+  // Resume affordance: officers/president can re-enter a meeting that is underway.
+  const canResume = isOfficerOrAbove && meeting.status === "in_progress";
+  const runnerSettings = new Map(
+    (runnerSettingsResult.data ?? []).map((s) => [s.key, s.value])
+  );
+  const runnerPositions = allPositions
+    .filter((p) => p.role !== "chair")
+    .map((p) => ({
+      id: p.id,
+      name: p.name as string,
+      role: p.role,
+      is_voting_member: p.is_voting_member,
+      display_name: p.display_name,
+    }));
+
   const calledByLabel = positionFormatById.get(meeting.called_by) ?? "Unknown";
   const secondedByLabel = meeting.seconded_by
     ? (positionFormatById.get(meeting.seconded_by) ?? "—")
@@ -327,6 +352,17 @@ export default async function MeetingDetailPage({
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={meeting.status} />
+            {canResume && (
+              <StartMeetingButton
+                positions={runnerPositions}
+                currentPositionId={currentPosition.id}
+                meetingId={meeting.id}
+                meetingDate={meeting.meeting_date}
+                status="in_progress"
+                driveFolder={runnerSettings.get("drive_folder_url")}
+                hoaName={runnerSettings.get("hoa_name")}
+              />
+            )}
             <Link
               href="/meetings"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"

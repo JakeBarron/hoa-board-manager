@@ -29,20 +29,32 @@ export type AreaInput = {
 
 /**
  * Resolves the signed-in user's position and whether they may edit the calendar.
- * Returns the server client alongside so callers reuse one connection.
+ * Returns the server client (so callers reuse one connection) plus `denied` — a
+ * ready-to-return error message when the caller is not an allowed editor, or
+ * `undefined` when they are. `denied` distinguishes a missing session ("You must
+ * be signed in.") from an insufficient role, so callers surface the right error.
  */
 async function resolveEditor() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user?.email) {
+    return { supabase, positionId: null, denied: "You must be signed in." };
+  }
+
   const { data: position } = await supabase
     .from("positions")
     .select("id, role")
-    .eq("email", user?.email ?? "")
+    .eq("email", user.email)
     .single();
-  const allowed = !!position && canEditAll(position.role as PositionRole);
-  return { supabase, positionId: position?.id ?? null, allowed };
+
+  const denied =
+    position && canEditAll(position.role as PositionRole)
+      ? undefined
+      : "Only the president or an officer can edit the calendar.";
+  return { supabase, positionId: position?.id ?? null, denied };
 }
 
 /** Revalidates the surfaces that read calendar data. */
@@ -61,8 +73,8 @@ export async function saveArea(input: AreaInput): Promise<string | undefined> {
   if (!input.name.trim()) return "Area name is required.";
   if (!/^#[0-9a-fA-F]{6}$/.test(input.color)) return "Color must be a hex value like #0f766e.";
 
-  const { supabase, allowed } = await resolveEditor();
-  if (!allowed) return "Only the president or an officer can edit the calendar.";
+  const { supabase, denied } = await resolveEditor();
+  if (denied) return denied;
 
   const row = {
     name: input.name.trim(),
@@ -84,8 +96,8 @@ export async function saveArea(input: AreaInput): Promise<string | undefined> {
  * @param id - The area id
  */
 export async function deleteArea(id: string): Promise<string | undefined> {
-  const { supabase, allowed } = await resolveEditor();
-  if (!allowed) return "Only the president or an officer can edit the calendar.";
+  const { supabase, denied } = await resolveEditor();
+  if (denied) return denied;
 
   const { count } = await supabase
     .from("calendar_events")
@@ -102,6 +114,11 @@ export async function deleteArea(id: string): Promise<string | undefined> {
  * Creates or updates an event together with its occurrences (replace-all).
  * Only president/officer (canEditAll). Returns an error message or undefined.
  *
+ * Note: the update path is NOT wrapped in a DB transaction (Supabase actions run
+ * statement-by-statement). If the occurrence insert fails after the old ones were
+ * deleted, the event is left with zero occurrences until the user re-saves
+ * successfully — a recoverable state, but worth knowing.
+ *
  * @param input - Event fields + the full set of occurrences
  */
 export async function saveEvent(input: EventInput): Promise<string | undefined> {
@@ -109,8 +126,8 @@ export async function saveEvent(input: EventInput): Promise<string | undefined> 
   if (!input.areaId) return "An area is required.";
   if (input.occurrences.length === 0) return "Add at least one month.";
 
-  const { supabase, positionId, allowed } = await resolveEditor();
-  if (!allowed) return "Only the president or an officer can edit the calendar.";
+  const { supabase, positionId, denied } = await resolveEditor();
+  if (denied) return denied;
 
   const fields = {
     area_id: input.areaId,
@@ -120,18 +137,19 @@ export async function saveEvent(input: EventInput): Promise<string | undefined> 
     template_url: input.templateUrl,
   };
 
-  let eventId = input.id;
-  if (eventId) {
+  let eventId: string;
+  if (input.id) {
     const { error } = await supabase
       .from("calendar_events")
       .update({ ...fields, updated_by_position_id: positionId, updated_at: new Date().toISOString() })
-      .eq("id", eventId);
+      .eq("id", input.id);
     if (error) return error.message;
     const { error: delErr } = await supabase
       .from("event_occurrences")
       .delete()
-      .eq("event_id", eventId);
+      .eq("event_id", input.id);
     if (delErr) return delErr.message;
+    eventId = input.id;
   } else {
     const { data, error } = await supabase
       .from("calendar_events")
@@ -143,7 +161,7 @@ export async function saveEvent(input: EventInput): Promise<string | undefined> 
   }
 
   const rows = input.occurrences.map((o) => ({
-    event_id: eventId!,
+    event_id: eventId,
     month: o.month,
     day_of_month: o.dayOfMonth,
   }));
@@ -159,8 +177,8 @@ export async function saveEvent(input: EventInput): Promise<string | undefined> 
  * @param id - The event id
  */
 export async function deleteEvent(id: string): Promise<string | undefined> {
-  const { supabase, allowed } = await resolveEditor();
-  if (!allowed) return "Only the president or an officer can edit the calendar.";
+  const { supabase, denied } = await resolveEditor();
+  if (denied) return denied;
 
   const { error } = await supabase.from("calendar_events").delete().eq("id", id);
   if (error) return error.message;

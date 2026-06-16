@@ -949,12 +949,14 @@ interface TopBarProps {
   onCreateActionItem: () => void;
   onAdjourn: () => void;
   onCancel: () => void;
+  onExit: () => void;
 }
 
 /**
  * Fixed top bar for the running view.
- * Shows date, timer, and action buttons. In non-running views the action
- * buttons are hidden but the cancel button remains.
+ * Shows date, timer, and action buttons. Cancel is only available before the
+ * meeting is called to order (while it is still pending) — once it is in
+ * progress it can no longer be cancelled, only adjourned.
  */
 function TopBar({
   meetingDate,
@@ -964,8 +966,16 @@ function TopBar({
   onCreateActionItem,
   onAdjourn,
   onCancel,
+  onExit,
 }: TopBarProps) {
   const isRunning = view === "running";
+  // The meeting is still pending (cancellable) only in the pre-start steps.
+  const canCancel =
+    view === "newBusiness" || view === "attendance" || view === "callToOrder";
+  // On the main running screen the meeting can't be cancelled — only closed (it
+  // stays in progress and can be resumed later) or adjourned. Sub-flows
+  // (voting/action item/adjourn) have their own Cancel back to running.
+  const canExit = isRunning;
 
   return (
     <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-background shrink-0">
@@ -990,9 +1000,14 @@ function TopBar({
             </Button>
           </>
         )}
-        {view !== "export" && (
+        {canCancel && (
           <Button size="sm" variant="ghost" onClick={onCancel}>
             Cancel
+          </Button>
+        )}
+        {canExit && (
+          <Button size="sm" variant="ghost" onClick={onExit}>
+            Close
           </Button>
         )}
       </div>
@@ -1218,6 +1233,7 @@ export function MeetingRunnerModal({
         onCreateActionItem={() => setView("actionItem")}
         onAdjourn={() => setView("adjourn")}
         onCancel={() => setShowCancelConfirm(true)}
+        onExit={onClose}
       />
 
       {showCancelConfirm && (

@@ -17,6 +17,7 @@ const FUNCTION_NAV: NavItem[] = [
   { label: "Annual Cycle", href: "/calendar" },
   { label: "Architecture", href: "/architecture" },
   { label: "Documents", href: "/documents" },
+  { label: "Directory", href: "/directory" },
   { label: "CRA Projects", href: "/cra" },
   { label: "Treasury", href: "/treasury" },
   { label: "Amenities", href: "/amenities" },
@@ -63,6 +64,7 @@ export function Sidebar({ position }: SidebarProps) {
             {/* Treasury is read-only for chairs — the page hides edit controls behind canEditTreasury */}
             <SidebarLink item={{ label: "Treasury", href: "/treasury" }} active={isActive("/treasury")} />
             <SidebarLink item={{ label: "Annual Cycle", href: "/calendar" }} active={isActive("/calendar")} />
+            <SidebarLink item={{ label: "Directory", href: "/directory" }} active={isActive("/directory")} />
           </ul>
         </nav>
         <SidebarFooter displayName={displayName} />

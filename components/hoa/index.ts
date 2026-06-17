@@ -27,3 +27,6 @@ export { FileUploadButton } from "./FileUploadButton";
 export { CalendarView } from "./CalendarView";
 export { CalendarAdmin } from "./CalendarAdmin";
 export { UpcomingCalendarWidget } from "./UpcomingCalendarWidget";
+export { HomesideCard } from "./HomesideCard";
+export { ContactRow } from "./ContactRow";
+export { ContactAddForm } from "./ContactAddForm";

@@ -19,6 +19,9 @@ export const POSITION_LABELS: Record<PositionName, string> = {
   welcoming:    "Welcoming Committee",
   clubhouse:    "Clubhouse Committee",
   cra:          "CRA Committee",
+  children_social: "Children's Social",
+  newsletter:      "Newsletter",
+  social_media:    "Social Media",
 };
 
 /**

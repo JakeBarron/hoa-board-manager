@@ -7,7 +7,9 @@ import { EmptyState } from "@/components/hoa/EmptyState";
 import { UpcomingCalendarWidget } from "@/components/hoa/UpcomingCalendarWidget";
 import { formatMeetingDate } from "@/lib/dates";
 import { buildCalendarItems, upcomingItems } from "@/lib/calendar/calendar";
-import type { ArchitectureRequest, CRAProject } from "@/types/database";
+import { HomesideCard } from "@/components/hoa/HomesideCard";
+import { POSITION_LABELS } from "@/lib/positions";
+import type { ArchitectureRequest, CRAProject, PositionName } from "@/types/database";
 
 export const metadata = {
   title: "Dashboard — HOA Board",
@@ -26,7 +28,7 @@ export default async function DashboardPage() {
   const today = new Date().toISOString().split("T")[0];
 
   // Fetch summary data in parallel
-  const [archResult, craResult, meetingResult, areasResult, eventsResult, occResult] = await Promise.all([
+  const [archResult, craResult, meetingResult, areasResult, eventsResult, occResult, positionsResult, settingsResult] = await Promise.all([
     supabase
       .from("architecture_requests")
       .select("id, address, status, created_at")
@@ -50,6 +52,8 @@ export default async function DashboardPage() {
     supabase.from("responsibility_areas").select("*"),
     supabase.from("calendar_events").select("*"),
     supabase.from("event_occurrences").select("*"),
+    supabase.from("positions").select("name, display_name, email, phone").order("name"),
+    supabase.from("settings").select("key, value"),
   ]);
 
   const pendingRequests = (archResult.data ?? []) as Pick<ArchitectureRequest, "id" | "address" | "status" | "created_at">[];
@@ -59,6 +63,21 @@ export default async function DashboardPage() {
   const upcoming = upcomingItems(
     buildCalendarItems(areasResult.data ?? [], eventsResult.data ?? [], occResult.data ?? [])
   ).slice(0, 5);
+
+  // Board directory: voting board members + officers (login chairs/committee live on /directory)
+  const CHAIR_NAMES: PositionName[] = [
+    "web", "architecture", "welcoming", "clubhouse", "cra",
+    "children_social", "newsletter", "social_media",
+  ];
+  const boardMembers = ((positionsResult.data ?? []) as {
+    name: PositionName;
+    display_name: string | null;
+    email: string;
+    phone: string | null;
+  }[]).filter((p) => !CHAIR_NAMES.includes(p.name));
+
+  const settings = settingsResult.data ?? [];
+  const settingValue = (key: string) => settings.find((s) => s.key === key)?.value ?? "";
 
   return (
     <div className="space-y-6">
@@ -141,6 +160,51 @@ export default async function DashboardPage() {
         </SectionCard>
 
         <UpcomingCalendarWidget items={upcoming} />
+
+        <SectionCard
+          title="Board Directory"
+          description="Board member contacts"
+          headerAction={
+            <Link href="/directory" className="text-sm text-primary hover:underline">
+              Full directory
+            </Link>
+          }
+        >
+          {boardMembers.length === 0 ? (
+            <EmptyState title="No board members" />
+          ) : (
+            <ul className="divide-y divide-border">
+              {boardMembers.map((p) => (
+                <li key={p.name} className="py-2 text-sm">
+                  <span className="font-medium">{POSITION_LABELS[p.name]}</span>
+                  {p.display_name && (
+                    <span className="text-muted-foreground"> · {p.display_name}</span>
+                  )}
+                  <span className="block text-xs text-muted-foreground">
+                    <a href={`mailto:${p.email}`} className="text-primary hover:underline">
+                      {p.email}
+                    </a>
+                    {p.phone && (
+                      <>
+                        {" · "}
+                        <a href={`tel:${p.phone}`} className="text-primary hover:underline">
+                          {p.phone}
+                        </a>
+                      </>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </SectionCard>
+
+        <HomesideCard
+          contactName={settingValue("homeside_contact_name")}
+          phone={settingValue("homeside_phone")}
+          email={settingValue("homeside_email")}
+          portalUrl={settingValue("homeside_portal_url")}
+        />
       </div>
     </div>
   );

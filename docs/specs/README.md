@@ -8,7 +8,6 @@ Design decisions and open questions. Update the status when work begins or compl
 |---|---|---|
 | [CRA Projects](./cra-projects.md) | Not started — schema ready (`cra_projects`, `cra_quotes`, `cra_updates`, `cra_documents`); dashboard reads active projects, but `/cra` is an EmptyState, `/cra/new` is a placeholder, and there is no `/cra/[id]`. | High |
 | [Feature Backlog (VP intake)](./feature-backlog.md) | Captured, none greenlit — 14 briefs from the VP's idea list (RSVP/quorum, vendor DB, chair history, clubhouse rental, delinquency follow-up, property counts, budget viz, social playbooks, **office knowledge base**, templates, access vault, bylaw list, lake). Promote a brief to its own spec when scheduled. | Intake |
-| Pre-Meeting / Agenda Merge | Not started — fold the pre-meeting updates page into the agenda; agenda feeds the meeting runner. **Spec file not yet written.** | Low |
 | Amenities (Pool / Clubhouse / Tennis) | Not started — `/amenities` is an EmptyState; no spec written. | Low |
 | Motions / voting UI | Schema-ready, no dedicated UI — `motions` + `motion_votes` exist and the meeting runner uses them, but there is no standalone motion-proposal or per-member voting interface (secretary records everything). | Low |
 
@@ -16,6 +15,7 @@ Design decisions and open questions. Update the status when work begins or compl
 
 | Spec | Where it shipped |
 |---|---|
+| [Agenda → Meetings Integration](./agenda-meeting-integration.md) | Agenda is now the start-time minutes scaffold; meetings are a sequential queue with one NEXT meeting; pre-meeting updates keyed to `meeting_id`; prep view on `/meetings/[id]` replaces `/agenda`; migration `0020` |
 | [Operating Calendar](./operating-calendar.md) | `/calendar` (Annual Cycle) — month-grouped read view + filter, president/officer admin CRUD, dashboard widget; migration `0019`; plan at `docs/superpowers/plans/2026-06-15-operating-calendar.md` |
 | [Meeting Runner](./meeting-runner.md) | `/meetings/[id]` — non-realtime, secretary-controlled |
 | [Architecture Upload](./architecture-upload.md) | `/architecture/new` — multi-file PDF upload to Storage; PDF preview on `/architecture/[id]` |

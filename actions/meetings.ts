@@ -2,16 +2,26 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { MeetingStatus } from "@/types/database";
+import type { MeetingStatus, PositionName } from "@/types/database";
+import { formatPersonName } from "@/lib/positions";
+import { pickNextMeetingDate } from "@/lib/dates";
+import {
+  buildMeetingScaffold,
+  BOARD_POSITION_ORDER,
+  COMMITTEE_POSITION_ORDER,
+  type NewBusinessItem,
+  type ScaffoldReport,
+} from "@/lib/agenda";
 
 /**
- * Schedules a new board meeting in 'pending' status.
- * Rejects dates in the past and dates that already have a pending or
- * in_progress meeting scheduled. RLS enforces that only officers and
- * president can insert meetings.
+ * Schedules a new board meeting in 'pending' status at the end of the queue.
+ * Meetings form a sequential, append-only queue: the new date must be strictly
+ * after every meeting already scheduled (and not in the past), so date order
+ * always equals queue order and the earliest pending/in_progress meeting is
+ * unambiguously "next". RLS enforces that only officers and president can insert.
  *
  * @param positionId  - UUID of the board position calling the meeting
- * @param meetingDate - ISO date string (YYYY-MM-DD) in America/New_York timezone; must be today or a future date
+ * @param meetingDate - ISO date string (YYYY-MM-DD) in America/New_York timezone; must be today or later, and after the last scheduled meeting
  * @returns The newly created meeting row ID
  */
 export async function createMeeting(
@@ -26,15 +36,19 @@ export async function createMeeting(
 
   const supabase = await createClient();
 
-  const { data: conflict, error: conflictError } = await supabase
+  // Append-only: reject anything that wouldn't sit at the end of the queue.
+  const { data: latest, error: latestError } = await supabase
     .from("meetings")
-    .select("id")
-    .eq("meeting_date", meetingDate)
+    .select("meeting_date")
     .in("status", ["pending", "in_progress"] as MeetingStatus[])
+    .order("meeting_date", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
-  if (conflictError) throw new Error(conflictError.message);
-  if (conflict) throw new Error("A meeting is already scheduled for that date");
+  if (latestError) throw new Error(latestError.message);
+  if (latest && meetingDate <= latest.meeting_date) {
+    throw new Error("New meetings must be scheduled after the last scheduled meeting");
+  }
 
   const { data, error } = await supabase
     .from("meetings")
@@ -44,69 +58,15 @@ export async function createMeeting(
 
   if (error) throw new Error(error.message);
   revalidatePath("/meetings");
-  revalidatePath("/agenda");
   revalidatePath("/dashboard");
   return { id: data.id };
 }
 
 /**
- * Finds an existing in-progress or pending meeting to resume,
- * or creates a new pending meeting for today if none exists.
- * Enforces one-open-meeting-at-a-time rule: returns the first
- * in_progress meeting if any, then falls back to a pending meeting
- * scheduled for today, then creates a fresh pending meeting.
- *
- * @param positionId - UUID of the board position starting/resuming the meeting
- * @returns The meeting id and its current status
- */
-export async function startOrResumeMeeting(
-  positionId: string
-): Promise<{ id: string; status: "pending" | "in_progress" }> {
-  const supabase = await createClient();
-
-  const inProgressResult = await supabase
-    .from("meetings")
-    .select("id, status")
-    .eq("status", "in_progress" as MeetingStatus)
-    .limit(1)
-    .maybeSingle();
-
-  if (inProgressResult.error) throw new Error(inProgressResult.error.message);
-  if (inProgressResult.data) {
-    return { id: inProgressResult.data.id, status: "in_progress" };
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-
-  const pendingResult = await supabase
-    .from("meetings")
-    .select("id, status")
-    .eq("status", "pending" as MeetingStatus)
-    .eq("meeting_date", today)
-    .limit(1)
-    .maybeSingle();
-
-  if (pendingResult.error) throw new Error(pendingResult.error.message);
-  if (pendingResult.data) {
-    return { id: pendingResult.data.id, status: "pending" };
-  }
-
-  const insertResult = await supabase
-    .from("meetings")
-    .insert({ meeting_date: today, called_by: positionId })
-    .select("id")
-    .single();
-
-  if (insertResult.error) throw new Error(insertResult.error.message);
-
-  revalidatePath("/meetings");
-  revalidatePath("/dashboard");
-  return { id: insertResult.data.id, status: "pending" };
-}
-
-/**
  * Calls the meeting to order: records proposer/seconder, sets started_at to
  * now, moves status to in_progress, and saves the initial attendance list.
+ * Enforces the queue invariant — the earliest scheduled meeting must be started
+ * first, and only one meeting may be in progress at a time.
  *
  * @param meetingId          - UUID of the meeting to call to order
  * @param calledBy           - Position ID of the member calling the meeting to order
@@ -120,6 +80,26 @@ export async function callToOrder(
   presentPositionIds: string[]
 ): Promise<void> {
   const supabase = await createClient();
+
+  // Meetings clear in order: the earliest scheduled (pending/in_progress) meeting
+  // is the only one that may be started. This also blocks starting a second
+  // meeting while another is already in progress.
+  const { data: earliest, error: earliestError } = await supabase
+    .from("meetings")
+    .select("id, status")
+    .in("status", ["pending", "in_progress"] as MeetingStatus[])
+    .order("meeting_date", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (earliestError) throw new Error(earliestError.message);
+  if (earliest && earliest.id !== meetingId) {
+    throw new Error(
+      earliest.status === "in_progress"
+        ? "Another meeting is already in progress"
+        : "An earlier meeting must be started first"
+    );
+  }
 
   const now = new Date().toISOString();
   const { error } = await supabase
@@ -137,6 +117,140 @@ export async function callToOrder(
   if (error) throw new Error(error.message);
   revalidatePath("/meetings");
   revalidatePath("/dashboard");
+}
+
+/**
+ * Builds the initial minutes scaffold for a meeting and persists it as the
+ * meeting's minutes_content, returning the HTML so the runner can seed its
+ * editor. The scaffold lays out the standard meeting order with every
+ * pre-meeting update (keyed to this meeting) folded inline, plus any new
+ * business the runner entered, so a first-time runner can follow along.
+ *
+ * Idempotent: if the meeting already has minutes content (e.g. resuming an
+ * in-progress meeting), the existing content is returned untouched and no new
+ * business is applied. Must be called after callToOrder so attendance and the
+ * caller/seconder are recorded.
+ *
+ * @param meetingId   - UUID of the meeting being started
+ * @param newBusiness - New-business items the runner entered before call to order
+ * @returns The minutes HTML to seed the editor with
+ */
+export async function seedMeetingScaffold(
+  meetingId: string,
+  newBusiness: NewBusinessItem[]
+): Promise<{ scaffold: string }> {
+  const supabase = await createClient();
+
+  const { data: meeting, error: meetingError } = await supabase
+    .from("meetings")
+    .select("called_by, seconded_by, present_positions, minutes_content")
+    .eq("id", meetingId)
+    .single();
+
+  if (meetingError) throw new Error(meetingError.message);
+
+  // Idempotent: never clobber minutes that already exist (resume case).
+  if (meeting.minutes_content && meeting.minutes_content.trim().length > 0) {
+    return { scaffold: meeting.minutes_content };
+  }
+
+  const [positionsResult, updatesResult, priorMinutesResult, quorumResult] = await Promise.all([
+    supabase.from("positions").select("id, name, display_name"),
+    supabase.from("pre_meeting_updates").select("position_id, content").eq("meeting_id", meetingId),
+    supabase
+      .from("meeting_minutes")
+      .select("meeting_date, google_doc_url")
+      .order("meeting_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("settings").select("value").eq("key", "quorum_required").single(),
+  ]);
+
+  const positions = (positionsResult.data ?? []) as {
+    id: string;
+    name: PositionName;
+    display_name: string | null;
+  }[];
+  const positionById = new Map(positions.map((p) => [p.id, p]));
+  const positionByName = new Map(positions.map((p) => [p.name, p]));
+
+  const updateByPositionId = new Map(
+    (updatesResult.data ?? []).map((u) => [u.position_id, u.content as string])
+  );
+
+  /** Formats a position id into its display name, or "Unknown" if missing. */
+  const nameOf = (id: string | null): string => {
+    if (!id) return "Unknown";
+    const pos = positionById.get(id);
+    return pos ? formatPersonName(pos.name, pos.display_name) : "Unknown";
+  };
+
+  /** Builds ordered report lines for a set of position names. */
+  const buildReports = (order: PositionName[]): ScaffoldReport[] =>
+    order.map((name) => {
+      const pos = positionByName.get(name);
+      return {
+        label: pos ? formatPersonName(pos.name, pos.display_name) : name,
+        content: pos ? (updateByPositionId.get(pos.id) ?? null) : null,
+      };
+    });
+
+  const presentIds = (meeting.present_positions ?? []) as string[];
+  const quorumRequired = quorumResult.data ? parseInt(quorumResult.data.value, 10) : 5;
+
+  const priorMinutes = priorMinutesResult.data
+    ? { date: priorMinutesResult.data.meeting_date, url: priorMinutesResult.data.google_doc_url }
+    : null;
+
+  const scaffold = buildMeetingScaffold({
+    calledByName: nameOf(meeting.called_by),
+    secondedByName: nameOf(meeting.seconded_by),
+    presentNames: presentIds.map(nameOf),
+    quorumMet: presentIds.length >= quorumRequired,
+    priorMinutes,
+    boardReports: buildReports(BOARD_POSITION_ORDER),
+    committeeReports: buildReports(COMMITTEE_POSITION_ORDER),
+    newBusiness,
+  });
+
+  const { error: saveError } = await supabase
+    .from("meetings")
+    .update({ minutes_content: scaffold })
+    .eq("id", meetingId);
+
+  if (saveError) throw new Error(saveError.message);
+  return { scaffold };
+}
+
+/**
+ * Loads the runtime state needed to resume an in-progress meeting in the runner:
+ * the current minutes HTML, the recorded attendance, and the start time (for the
+ * elapsed timer). Used when re-entering a meeting that is already underway so the
+ * modal restores attendance and minutes instead of resetting to defaults.
+ *
+ * @param meetingId - UUID of the in-progress meeting being resumed
+ * @returns The saved minutes, present position ids, and started_at timestamp
+ */
+export async function loadMeetingRunnerState(meetingId: string): Promise<{
+  minutesContent: string;
+  presentPositionIds: string[];
+  startedAt: string | null;
+}> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("meetings")
+    .select("minutes_content, present_positions, started_at")
+    .eq("id", meetingId)
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  return {
+    minutesContent: data.minutes_content ?? "",
+    presentPositionIds: (data.present_positions ?? []) as string[],
+    startedAt: data.started_at ?? null,
+  };
 }
 
 /**
@@ -188,17 +302,20 @@ export async function cancelMeeting(meetingId: string): Promise<void> {
 }
 
 /**
- * Moves a pending meeting to a new date. Validates that:
+ * Moves a pending meeting to a new date while preserving queue order. Validates that:
  * 1. `newDate` is a parseable date string in YYYY-MM-DD format
  * 2. `newDate` is strictly in the future (not today or earlier)
  * 3. No other pending or in_progress meeting is already scheduled on `newDate`
- * 4. The meeting being rescheduled is still in 'pending' status (race condition guard)
+ * 4. `newDate` keeps the meeting in its current slot — strictly after the previous
+ *    scheduled meeting and strictly before the next — so the "next" meeting everyone
+ *    targets never silently changes
+ * 5. The meeting being rescheduled is still in 'pending' status (race condition guard)
  *
- * Revalidates /meetings, /pre-meeting, and /agenda after a successful update.
+ * Revalidates /meetings, /dashboard, and the board/committee sections after a successful update.
  *
  * @param meetingId - UUID of the meeting to reschedule
  * @param newDate   - New ISO date string (YYYY-MM-DD) for the meeting
- * @throws If validation fails, a conflict exists, or the meeting is no longer pending
+ * @throws If validation fails, a conflict exists, the move reorders the queue, or the meeting is no longer pending
  */
 export async function rescheduleMeeting(
   meetingId: string,
@@ -212,16 +329,37 @@ export async function rescheduleMeeting(
 
   const supabase = await createClient();
 
-  const { data: conflict, error: conflictError } = await supabase
+  const { data: scheduled, error: scheduledError } = await supabase
     .from("meetings")
-    .select("id")
-    .eq("meeting_date", newDate)
-    .in("status", ["pending", "in_progress"] as MeetingStatus[])
-    .neq("id", meetingId)
-    .maybeSingle();
+    .select("id, meeting_date")
+    .in("status", ["pending", "in_progress"] as MeetingStatus[]);
 
-  if (conflictError) throw new Error(conflictError.message);
-  if (conflict) throw new Error("A meeting is already scheduled for that date");
+  if (scheduledError) throw new Error(scheduledError.message);
+
+  const all = (scheduled ?? []) as { id: string; meeting_date: string }[];
+  const thisMeeting = all.find((m) => m.id === meetingId);
+  if (!thisMeeting) throw new Error("Meeting is not in a reschedulable state");
+
+  const others = all.filter((m) => m.id !== meetingId);
+  if (others.some((m) => m.meeting_date === newDate)) {
+    throw new Error("A meeting is already scheduled for that date");
+  }
+
+  // Keep the meeting between its current neighbours so queue order (and which
+  // meeting is "next") is preserved.
+  const prevDate = others
+    .filter((m) => m.meeting_date < thisMeeting.meeting_date)
+    .reduce<string | null>((max, m) => (max === null || m.meeting_date > max ? m.meeting_date : max), null);
+  const nextDate = others
+    .filter((m) => m.meeting_date > thisMeeting.meeting_date)
+    .reduce<string | null>((min, m) => (min === null || m.meeting_date < min ? m.meeting_date : min), null);
+
+  if (prevDate !== null && newDate <= prevDate) {
+    throw new Error("Cannot move a meeting before an earlier scheduled meeting");
+  }
+  if (nextDate !== null && newDate >= nextDate) {
+    throw new Error("Cannot move a meeting after a later scheduled meeting");
+  }
 
   const { data, error } = await supabase
     .from("meetings")
@@ -233,10 +371,10 @@ export async function rescheduleMeeting(
   if (error) throw new Error(error.message);
   if (!data || data.length === 0) throw new Error("Meeting is not in a reschedulable state");
 
-  revalidatePath("/meetings");
-  revalidatePath("/pre-meeting");
-  revalidatePath("/agenda");
+  revalidatePath("/meetings", "layout");
   revalidatePath("/dashboard");
+  revalidatePath("/board", "layout");
+  revalidatePath("/committee", "layout");
 }
 
 /**
@@ -262,18 +400,59 @@ export async function saveMeetingMinutes(
 }
 
 /**
+ * Best-effort scheduling of the next meeting once one adjourns, keeping the
+ * queue from emptying in normal operation. Only acts when no other pending
+ * meeting remains; uses the configured cadence (defaulting to the 3rd Tuesday)
+ * and the America/New_York date, choosing the first cadence date strictly after
+ * both today and the adjourned meeting. Any failure is swallowed so adjournment
+ * still succeeds. The DB's one-pending-per-date index guards against races.
+ *
+ * @param afterDate - The adjourned meeting's date (YYYY-MM-DD)
+ * @param calledBy  - Position id to record as caller of the auto-scheduled meeting
+ */
+async function autoScheduleNextMeeting(afterDate: string, calledBy: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+
+    const { data: pending } = await supabase
+      .from("meetings")
+      .select("id")
+      .eq("status", "pending" satisfies MeetingStatus)
+      .limit(1)
+      .maybeSingle();
+    if (pending) return; // the queue already has a next meeting
+
+    const { data: cadenceSetting } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "meeting_cadence")
+      .maybeSingle();
+    const cadence = cadenceSetting?.value || "3:2";
+
+    const todayET = new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+    const nextDate = pickNextMeetingDate(cadence, afterDate, todayET);
+    if (!nextDate) return;
+
+    await supabase.from("meetings").insert({ meeting_date: nextDate, called_by: calledBy });
+  } catch {
+    // best-effort: never block adjournment on a scheduling failure
+  }
+}
+
+/**
  * Formally adjourns the meeting: sets adjourned_at to now, moves status to adjourned,
  * and auto-uploads the minutes as a .docx to Supabase Storage at minutes/{meetingId}.docx.
+ * Then best-effort schedules the next meeting if the queue is now empty.
  * The proposedBy/secondedBy params capture who moved and seconded for the UI flow
  * but are not persisted (schema has no separate adjournment columns).
  *
  * @param meetingId   - UUID of the meeting to adjourn
- * @param _proposedBy - Position ID of the member who moved to adjourn (UI only)
+ * @param proposedBy  - Position ID of the member who moved to adjourn (recorded as the next meeting's caller; not otherwise persisted)
  * @param _secondedBy - Position ID of the member who seconded adjournment (UI only)
  */
 export async function adjournMeeting(
   meetingId: string,
-  _proposedBy?: string,
+  proposedBy?: string,
   _secondedBy?: string
 ): Promise<{ uploadError: string | null }> {
   const supabase = await createClient();
@@ -290,9 +469,14 @@ export async function adjournMeeting(
 
   const { data: meeting } = await supabase
     .from("meetings")
-    .select("minutes_content")
+    .select("meeting_date, called_by, minutes_content")
     .eq("id", meetingId)
     .single();
+
+  // Refill the queue if this was the last scheduled meeting.
+  if (meeting) {
+    await autoScheduleNextMeeting(meeting.meeting_date, proposedBy ?? meeting.called_by);
+  }
 
   if (!meeting?.minutes_content) {
     revalidatePath("/meetings", "layout");
@@ -395,8 +579,8 @@ export async function addMeetingDocument(
 
 /**
  * Records that a pre-meeting reminder email was sent for the given meeting.
- * Sets reminder_sent_at to now — used to show a warning on the agenda page
- * so the secretary doesn't send the reminder multiple times.
+ * Sets reminder_sent_at to now — used to show a warning on the meeting prep
+ * view so the secretary doesn't send the reminder multiple times.
  *
  * @param meetingId - UUID of the meeting for which the reminder was sent
  */
@@ -409,5 +593,5 @@ export async function recordReminderSent(meetingId: string): Promise<void> {
     .eq("id", meetingId);
 
   if (error) throw new Error(error.message);
-  revalidatePath("/agenda");
+  revalidatePath(`/meetings/${meetingId}`);
 }

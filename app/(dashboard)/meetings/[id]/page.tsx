@@ -8,6 +8,8 @@ import { SectionCard } from "@/components/hoa/SectionCard";
 import { StatusBadge } from "@/components/hoa/StatusBadge";
 import { EmptyState } from "@/components/hoa/EmptyState";
 import { AddAmendmentForm } from "./AddAmendmentForm";
+import { MeetingPrep } from "./MeetingPrep";
+import { StartMeetingButton } from "./StartMeetingButton";
 import type {
   Motion,
   MotionVote,
@@ -141,15 +143,7 @@ export default async function MeetingDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [
-    positionResult,
-    meetingResult,
-    allPositionsResult,
-    motionsResult,
-    meetingDocsResult,
-    quorumSettingResult,
-    actionItemsResult,
-  ] = await Promise.all([
+  const [positionResult, meetingResult] = await Promise.all([
     supabase
       .from("positions")
       .select("id, name, role")
@@ -158,11 +152,43 @@ export default async function MeetingDetailPage({
     supabase
       .from("meetings")
       .select(
-        "id, meeting_date, status, called_by, seconded_by, started_at, adjourned_at, minutes_drive_url, storage_path, present_positions"
+        "id, meeting_date, status, called_by, seconded_by, started_at, adjourned_at, minutes_drive_url, storage_path, present_positions, reminder_sent_at"
       )
       .eq("id", id)
       .single(),
-    supabase.from("positions").select("id, name, display_name"),
+  ]);
+
+  const currentPosition = positionResult.data;
+  if (!currentPosition) redirect("/login");
+  if (isChair(currentPosition.role)) redirect(`/committee/${currentPosition.name}`);
+
+  const meeting = meetingResult.data;
+  if (!meeting) redirect("/meetings");
+
+  // A pending meeting shows the prep view (agenda + checklist + Start). Motions,
+  // votes, and documents only exist once the meeting has started, so skip those
+  // fetches entirely for pending meetings.
+  if (meeting.status === "pending") {
+    return (
+      <MeetingPrep
+        meetingId={meeting.id}
+        meetingDate={meeting.meeting_date}
+        reminderSentAt={meeting.reminder_sent_at}
+        currentPositionId={currentPosition.id}
+        currentRole={currentPosition.role}
+      />
+    );
+  }
+
+  const [
+    allPositionsResult,
+    motionsResult,
+    meetingDocsResult,
+    quorumSettingResult,
+    actionItemsResult,
+    runnerSettingsResult,
+  ] = await Promise.all([
+    supabase.from("positions").select("id, name, role, is_voting_member, display_name"),
     supabase
       .from("motions")
       .select(
@@ -185,18 +211,14 @@ export default async function MeetingDetailPage({
       .select("id, title, position_id, completed, due_date")
       .eq("meeting_id", id)
       .order("created_at", { ascending: true }),
+    supabase.from("settings").select("key, value").in("key", ["hoa_name", "drive_folder_url"]),
   ]);
-
-  const currentPosition = positionResult.data;
-  if (!currentPosition) redirect("/login");
-  if (isChair(currentPosition.role)) redirect(`/committee/${currentPosition.name}`);
-
-  const meeting = meetingResult.data;
-  if (!meeting) redirect("/meetings");
 
   const allPositions = (allPositionsResult.data ?? []) as {
     id: string;
     name: PositionName;
+    role: string;
+    is_voting_member: boolean;
     display_name: string | null;
   }[];
 
@@ -298,6 +320,21 @@ export default async function MeetingDetailPage({
 
   const isOfficerOrAbove = canEditAll(currentPosition.role);
 
+  // Resume affordance: officers/president can re-enter a meeting that is underway.
+  const canResume = isOfficerOrAbove && meeting.status === "in_progress";
+  const runnerSettings = new Map(
+    (runnerSettingsResult.data ?? []).map((s) => [s.key, s.value])
+  );
+  const runnerPositions = allPositions
+    .filter((p) => p.role !== "chair")
+    .map((p) => ({
+      id: p.id,
+      name: p.name as string,
+      role: p.role,
+      is_voting_member: p.is_voting_member,
+      display_name: p.display_name,
+    }));
+
   const calledByLabel = positionFormatById.get(meeting.called_by) ?? "Unknown";
   const secondedByLabel = meeting.seconded_by
     ? (positionFormatById.get(meeting.seconded_by) ?? "—")
@@ -315,6 +352,17 @@ export default async function MeetingDetailPage({
         action={
           <div className="flex items-center gap-2">
             <StatusBadge status={meeting.status} />
+            {canResume && (
+              <StartMeetingButton
+                positions={runnerPositions}
+                currentPositionId={currentPosition.id}
+                meetingId={meeting.id}
+                meetingDate={meeting.meeting_date}
+                status="in_progress"
+                driveFolder={runnerSettings.get("drive_folder_url")}
+                hoaName={runnerSettings.get("hoa_name")}
+              />
+            )}
             <Link
               href="/meetings"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"

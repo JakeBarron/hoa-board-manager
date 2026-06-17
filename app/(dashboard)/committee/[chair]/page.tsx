@@ -7,7 +7,8 @@ import { PreMeetingForm } from "@/components/hoa/PreMeetingForm";
 import { StatusBadge } from "@/components/hoa/StatusBadge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { getUpcomingMeetingDates, formatMeetingDate } from "@/lib/dates";
+import { formatMeetingDate } from "@/lib/dates";
+import { canEditAll } from "@/lib/permissions";
 import type { PositionName, ArchitectureRequest } from "@/types/database";
 
 type ChairPositionName = "web" | "architecture" | "welcoming" | "clubhouse" | "cra";
@@ -24,7 +25,6 @@ const CHAIR_NAMES = new Set<string>(["web", "architecture", "welcoming", "clubho
 
 interface Props {
   params: Promise<{ chair: string }>;
-  searchParams: Promise<{ date?: string }>;
 }
 
 /**
@@ -38,9 +38,8 @@ interface Props {
  *   - Voting member: read-only
  *   - Chair on another chair's page: redirect to own page
  */
-export default async function CommitteePage({ params, searchParams }: Props) {
+export default async function CommitteePage({ params }: Props) {
   const { chair } = await params;
-  const { date: dateParam } = await searchParams;
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -69,23 +68,19 @@ export default async function CommitteePage({ params, searchParams }: Props) {
     currentPosition.role === "officer" ||
     currentPosition.id === targetPosition.id;
 
-  const today = new Date().toISOString().split("T")[0];
   const isArchitectureChair = chair === "architecture";
 
-  // Fetch meeting dates and existing update whenever canEdit is true so that
-  // officers and president can submit on behalf of a chair, not just the chair themselves.
-  const [scheduledMeetingsResult, cadenceResult, archRequestsResult] = await Promise.all([
+  // Fetch the NEXT meeting whenever canEdit is true so that officers and
+  // president can submit on behalf of a chair, not just the chair themselves.
+  const [nextMeetingResult, archRequestsResult] = await Promise.all([
     canEdit
       ? supabase
           .from("meetings")
-          .select("meeting_date")
-          .gte("meeting_date", today)
+          .select("id, meeting_date")
           .in("status", ["pending", "in_progress"])
           .order("meeting_date", { ascending: true })
-          .limit(3)
-      : Promise.resolve({ data: null }),
-    canEdit
-      ? supabase.from("settings").select("value").eq("key", "meeting_cadence").single()
+          .limit(1)
+          .maybeSingle()
       : Promise.resolve({ data: null }),
     isArchitectureChair
       ? supabase
@@ -95,22 +90,14 @@ export default async function CommitteePage({ params, searchParams }: Props) {
       : Promise.resolve({ data: null }),
   ]);
 
-  const cadence = cadenceResult.data?.value ?? "3:2";
-  const scheduledDates = (scheduledMeetingsResult.data ?? []).map(
-    (m: { meeting_date: string }) => m.meeting_date
-  );
-  const meetingDates =
-    scheduledDates.length > 0 ? scheduledDates : getUpcomingMeetingDates(cadence, 3);
-  const nextMeetingDate = (dateParam && meetingDates.includes(dateParam))
-    ? dateParam
-    : meetingDates[0];
+  const nextMeeting = nextMeetingResult.data as { id: string; meeting_date: string } | null;
 
-  const existingUpdate = canEdit
+  const existingUpdate = canEdit && nextMeeting
     ? await supabase
         .from("pre_meeting_updates")
         .select("content")
         .eq("position_id", targetPosition.id)
-        .eq("meeting_date", nextMeetingDate)
+        .eq("meeting_id", nextMeeting.id)
         .maybeSingle()
         .then((r) => r.data)
     : null;
@@ -126,13 +113,18 @@ export default async function CommitteePage({ params, searchParams }: Props) {
       />
 
       {canEdit && (
-        <SectionCard title={`Pre-Meeting Update — ${formatMeetingDate(nextMeetingDate)}`}>
+        <SectionCard
+          title={
+            nextMeeting
+              ? `Pre-Meeting Update — ${formatMeetingDate(nextMeeting.meeting_date)}`
+              : "Pre-Meeting Update"
+          }
+        >
           <PreMeetingForm
             positionId={targetPosition.id}
-            selectedDate={nextMeetingDate}
-            upcomingMondays={meetingDates}
+            meetingId={nextMeeting?.id ?? null}
             existingContent={existingUpdate?.content ?? undefined}
-            returnPath={`/committee/${chair}`}
+            canSchedule={canEditAll(currentPosition.role)}
           />
         </SectionCard>
       )}

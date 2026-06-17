@@ -32,7 +32,7 @@ describe("Sidebar — board member view", () => {
     expect(screen.getByRole("link", { name: "Meetings" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Architecture" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "CRA Projects" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Agenda" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Agenda" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Amenities" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Properties" })).toBeInTheDocument();
   });

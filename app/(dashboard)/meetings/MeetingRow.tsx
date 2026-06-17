@@ -85,17 +85,19 @@ export function MeetingRow({
         </Link>
         <div className="flex items-center gap-3">
           <StatusBadge status={meeting.status} />
-          {canRun && meeting.status === "pending" && mode === "default" && (
-            <Button
-              size="sm"
-              variant="default"
-              onClick={() =>
-                onStartMeeting?.(meeting.id, "pending")
-              }
-            >
-              Start Meeting
-            </Button>
-          )}
+          {canRun &&
+            (meeting.status === "pending" || meeting.status === "in_progress") &&
+            mode === "default" && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() =>
+                  onStartMeeting?.(meeting.id, meeting.status as "pending" | "in_progress")
+                }
+              >
+                {meeting.status === "in_progress" ? "Resume Meeting" : "Start Meeting"}
+              </Button>
+            )}
           {showActions && mode === "default" && (
             <>
               <Button

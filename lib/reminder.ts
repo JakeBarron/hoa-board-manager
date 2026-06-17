@@ -7,7 +7,7 @@ interface ReminderParams {
   boardEmails: string[];
   missingPositions: PositionName[];
   appUrl: string;
-  /** Overrides the default /pre-meeting?date=... link in the email body. */
+  /** Overrides the default /dashboard link in the email body. */
   updateUrl?: string;
 }
 
@@ -32,7 +32,7 @@ export function buildReminderMailto({
 }: ReminderParams): string {
   const dateLabel = formatMeetingDate(meetingDate);
   const subject = `Board Meeting Reminder — ${dateLabel}`;
-  const submitUrl = updateUrl ?? `${appUrl}/pre-meeting?date=${meetingDate}`;
+  const submitUrl = updateUrl ?? `${appUrl}/dashboard`;
 
   const missingSection =
     missingPositions.length > 0

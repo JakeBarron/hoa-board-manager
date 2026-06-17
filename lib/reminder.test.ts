@@ -24,18 +24,17 @@ describe("buildReminderMailto", () => {
     expect(result).toContain(encodeURIComponent("2026-06-02").slice(0, 4));
   });
 
-  it("links to /pre-meeting by default", () => {
+  it("links to /dashboard by default", () => {
     const result = buildReminderMailto(BASE_PARAMS);
-    expect(result).toContain(encodeURIComponent("/pre-meeting"));
+    expect(result).toContain(encodeURIComponent("/dashboard"));
   });
 
   it("uses updateUrl override when provided", () => {
     const result = buildReminderMailto({
       ...BASE_PARAMS,
-      updateUrl: "https://board.example.com/dashboard",
+      updateUrl: "https://board.example.com/board/pool",
     });
-    expect(result).toContain(encodeURIComponent("/dashboard"));
-    expect(result).not.toContain(encodeURIComponent("/pre-meeting"));
+    expect(result).toContain(encodeURIComponent("/board/pool"));
   });
 
   it("lists missing board positions by label", () => {

@@ -11,7 +11,7 @@ interface Props {
 }
 
 /**
- * Reminder buttons for the agenda page.
+ * Reminder buttons for the meeting prep view.
  * Each link records the send timestamp on click (when a real meeting is scheduled).
  * Shows a warning if a reminder has already been sent.
  */

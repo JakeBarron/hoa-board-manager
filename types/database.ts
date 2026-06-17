@@ -254,18 +254,21 @@ export type Database = {
         Row: {
           id: string;
           position_id: string;
-          meeting_date: string;
+          meeting_id: string | null;
+          meeting_date: string | null;
           content: string;
           submitted_at: string;
         };
         Insert: {
           id?: string;
           position_id: string;
-          meeting_date: string;
+          meeting_id?: string | null;
+          meeting_date?: string | null;
           content: string;
           submitted_at?: string;
         };
         Update: {
+          meeting_id?: string | null;
           content?: string;
         };
         Relationships: [];

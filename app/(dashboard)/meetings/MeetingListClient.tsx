@@ -100,6 +100,10 @@ export function MeetingListClient({
     setModalMeetingId(null);
   };
 
+  const modalMeeting = modalMeetingId
+    ? [...upcoming, ...past].find((m) => m.id === modalMeetingId)
+    : null;
+
   return (
     <>
       <div className="space-y-6">
@@ -149,7 +153,14 @@ export function MeetingListClient({
           <SectionCard title="Past">
             <ul className="divide-y divide-border">
               {past.map((m) => (
-                <MeetingRow key={m.id} meeting={m} canSchedule={canSchedule} />
+                <MeetingRow
+                  key={m.id}
+                  meeting={m}
+                  canSchedule={canSchedule}
+                  canRun={canRun}
+                  onStartMeeting={handleStartMeeting}
+                  startError={startErrorRowId === m.id ? startError ?? undefined : undefined}
+                />
               ))}
             </ul>
           </SectionCard>
@@ -164,13 +175,14 @@ export function MeetingListClient({
         />
       )}
 
-      {modalMeetingId && (
+      {modalMeetingId && modalMeeting && (
         <MeetingRunnerModal
           positions={positions}
           currentPositionId={currentPositionId}
           existingMeeting={resolvedExistingMeeting}
           onClose={handleClose}
           meetingId={modalMeetingId}
+          meetingDate={modalMeeting.meeting_date}
           driveFolder={driveFolder}
           hoaName={hoaName}
         />

@@ -658,6 +658,88 @@ export type Database = {
         };
         Relationships: [];
       };
+      responsibility_areas: {
+        Row: {
+          id: string;
+          name: string;
+          color: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          color: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          color?: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      calendar_events: {
+        Row: {
+          id: string;
+          area_id: string;
+          title: string;
+          responsible_party: string | null;
+          notes: string | null;
+          template_url: string | null;
+          created_by_position_id: string | null;
+          created_at: string;
+          updated_by_position_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          area_id: string;
+          title: string;
+          responsible_party?: string | null;
+          notes?: string | null;
+          template_url?: string | null;
+          created_by_position_id?: string | null;
+          created_at?: string;
+          updated_by_position_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          area_id?: string;
+          title?: string;
+          responsible_party?: string | null;
+          notes?: string | null;
+          template_url?: string | null;
+          updated_by_position_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      event_occurrences: {
+        Row: {
+          id: string;
+          event_id: string;
+          month: number;
+          day_of_month: number | null;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          month: number;
+          day_of_month?: number | null;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          month?: number;
+          day_of_month?: number | null;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -751,3 +833,6 @@ export type BudgetMonthlyAmount = Database["public"]["Tables"]["budget_monthly_a
 export type CategoryActual = Database["public"]["Tables"]["budget_category_actuals"]["Row"];
 export type CashBalance = Database["public"]["Tables"]["cash_balances"]["Row"];
 export type AssessmentPayment = Database["public"]["Tables"]["assessment_payments"]["Row"];
+export type ResponsibilityArea = Database["public"]["Tables"]["responsibility_areas"]["Row"];
+export type CalendarEvent = Database["public"]["Tables"]["calendar_events"]["Row"];
+export type EventOccurrence = Database["public"]["Tables"]["event_occurrences"]["Row"];

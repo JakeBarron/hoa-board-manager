@@ -20,7 +20,7 @@
   into next year's earliest events so the widget never empties in Q4. NOTE this makes the
   page's **month grouping (plain Jan–Dec order)** and the widget's **upcoming sort (wrapping)**
   two distinct orderings — keep them separate.
-- **Free-text responsible parties** ("Gibbs", "Executive Board", "Kids Social") stay as
+- **Free-text responsible parties** ("Hartwell", "Executive Board", "Kids Social") stay as
   free text, editable via CRUD.
 
 ### Build defaults (documented so parallel agents don't each re-decide)
@@ -140,7 +140,7 @@ calendar_events
   id                     uuid pk
   area_id                uuid fk -> responsibility_areas
   title                  text not null
-  responsible_party      text null        -- free text: "Clubhouse Chair", "Homeside", "Gibbs"
+  responsible_party      text null        -- free text: "Clubhouse Chair", "Homeside", "Hartwell"
   notes                  text null        -- clarifying instructions / embedded deadlines
   template_url           text null        -- Google Drive link
   created_by_position_id uuid null fk -> positions
@@ -200,7 +200,7 @@ responsible parties, months, and the few specific days.**
 | Homeside | Secretary of State filing due | {3} | 1 | Homeside | due 3/1 |
 | Homeside | Dues letter & invoice received by residents | {3} | 1 | Homeside | |
 | Homeside | Insurance renewal | {5} | — | Homeside | |
-| Homeside | Annual backflow | {6} | — | Homeside | Christy → Adams to schedule |
+| Homeside | Annual backflow | {6} | — | Homeside | Dana → Morgan to schedule |
 | Homeside | HOA taxes due | {6} | 15 | Homeside | |
 | Homeside | Fall assessment notices mailed (if planned) | {8} | — | Homeside | |
 | Homeside | Termite bond due | {9} | — | Homeside | |
@@ -216,8 +216,8 @@ responsible parties, months, and the few specific days.**
 | Newsletter | What happened in the meeting | {5} | — | Newsletter | |
 | Newsletter | What's coming | {9} | — | Newsletter | |
 | Grounds | Mulch (if needed) | {4,10} | — | Grounds | |
-| Grounds | Spring flowers planned | {4} | — | Gibbs | |
-| Grounds | Fall flowers planned | {10} | — | Gibbs | |
+| Grounds | Spring flowers planned | {4} | — | Hartwell | |
+| Grounds | Fall flowers planned | {10} | — | Hartwell | |
 | Pool | Pool readiness — reprogram fobs after dues received | {4} | — | Pool Chair | add new SAYOR, remove old |
 | Pool | Pool opens (swim team, then residents) | {5} | — | Pool Chair | |
 | Pool | Pool closes for the year | {9} | — | Pool Chair | |
@@ -229,7 +229,7 @@ responsible parties, months, and the few specific days.**
 **Open data questions — RESOLVED (2026-06-15):** (1) annual meeting → dropped from seed,
 deferred to meetings→calendar integration; (2) Secretary of State → **March 1**; (3) any
 month-end defaults that should carry a specific day → left as month-end, Jake fixes via CRUD
-post-deploy; (4) "Gibbs" / "Executive Board" / "Kids Social" → confirmed free text.
+post-deploy; (4) "Hartwell" / "Executive Board" / "Kids Social" → confirmed free text.
 
 ---
 

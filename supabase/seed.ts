@@ -98,13 +98,14 @@ const seedPosition = async (pos: (typeof positions)[number]): Promise<void> => {
   console.log(`  ✓ Inserted position row for ${pos.name}`);
 };
 
+// Entirely fictional street names — not the real neighborhood's streets.
 const FAKE_STREETS = [
-  "Long Lake Drive",
-  "Camp Point Court",
-  "Spring Rock Court",
-  "Stonebrook Court",
-  "Lakeside Lane",
-  "Crystal Ridge Way",
+  "Maple Grove Drive",
+  "Birchwood Court",
+  "Cedar Hollow Court",
+  "Willow Bend Court",
+  "Meadow View Lane",
+  "Sunset Ridge Way",
 ];
 
 const FAKE_FIRST_NAMES = [

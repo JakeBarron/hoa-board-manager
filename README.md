@@ -44,6 +44,10 @@ pnpm type-check # tsc --noEmit
 
 Requires `.env.local` with Supabase credentials (see `CLAUDE.md` for the full environment variable reference).
 
+## Data & privacy
+
+**All data in the seed scripts (`supabase/seed.ts`) is entirely fictional** — names, email addresses, street addresses, account numbers, and key-fob numbers are randomly generated or made up and do not correspond to any real homeowner. No real resident data is committed to this repository. The production import script (`supabase/import-properties-prod.ts`) reads a CSV supplied at runtime and contains no embedded data.
+
 ## Architecture notes
 
 - `app/(dashboard)/layout.tsx` — authenticates every dashboard route, resolves position, renders sidebar

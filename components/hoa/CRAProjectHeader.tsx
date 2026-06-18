@@ -6,6 +6,7 @@ import { updateCRAProject, deleteCRAProject } from "@/actions/cra";
 import { formatCents, parseDollarsToCents } from "@/lib/money";
 import { InlineConfirm } from "@/components/hoa/InlineConfirm";
 import { Button } from "@/components/ui/button";
+import { StatusBadge, statusLabel } from "@/components/hoa/StatusBadge";
 import type { CRAProject, CRAProjectStatus, CRAPriority } from "@/types/database";
 
 interface FiscalYearOption {
@@ -58,9 +59,17 @@ export function CRAProjectHeader({
     });
 
   if (!canEdit) {
+    const fiscalYearLabel =
+      fiscalYears.find((f) => f.id === project.fiscal_year_id)?.label ?? "—";
+
     return (
       <dl className="grid grid-cols-2 gap-3 rounded-md border border-border p-4 text-sm sm:grid-cols-3">
-        <Field label="Status" value={project.status} />
+        <div>
+          <dt className="text-xs text-muted-foreground">Status</dt>
+          <dd>
+            <StatusBadge status={project.status} />
+          </dd>
+        </div>
         <Field
           label="Estimated"
           value={formatCents(project.estimated_cost ?? 0)}
@@ -73,6 +82,7 @@ export function CRAProjectHeader({
         />
         <Field label="Priority" value={project.priority ?? "—"} />
         <Field label="Target date" value={project.target_date ?? "—"} />
+        <Field label="Fiscal year" value={fiscalYearLabel} />
         <Field label="Category" value={project.category ?? "—"} />
         {project.description && (
           <Field label="Description" value={project.description} wide />
@@ -99,7 +109,7 @@ export function CRAProjectHeader({
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {statusLabel(s)}
               </option>
             ))}
           </select>

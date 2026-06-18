@@ -70,6 +70,16 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 }
 
 /**
+ * Returns the human-readable label for a given status value (e.g. "in_progress" → "In Progress").
+ *
+ * @param status - Any AppStatus enum value
+ * @returns Human-readable label string
+ */
+export function statusLabel(status: AppStatus): string {
+  return STATUS_LABELS[status];
+}
+
+/**
  * Curried helper — returns a StatusBadge element for a given status.
  * Useful in table renderers and list items where you need a factory function.
  *

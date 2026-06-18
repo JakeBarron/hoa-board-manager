@@ -53,6 +53,12 @@ describe("compareProjects", () => {
     arr.sort(compareProjects);
     expect(arr[0].status).toBe("in_progress");
   });
+  it("sorts null priority after explicit priorities", () => {
+    const arr = [project({ priority: null }), project({ priority: "low" })];
+    arr.sort(compareProjects);
+    expect(arr[0].priority).toBe("low");
+    expect(arr[1].priority).toBeNull();
+  });
 });
 
 describe("quoteReadiness", () => {

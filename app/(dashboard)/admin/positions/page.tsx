@@ -33,7 +33,7 @@ export default async function ManagePositionsPage() {
 
   const { data: positions } = await supabase
     .from("positions")
-    .select("id, name, role, email, display_name")
+    .select("id, name, role, email, display_name, phone")
     .neq("role", "chair")
     .order("name");
 
@@ -57,6 +57,7 @@ export default async function ManagePositionsPage() {
                 role: pos.role,
                 email: pos.email,
                 display_name: pos.display_name,
+                phone: pos.phone,
               }}
             />
           ))}

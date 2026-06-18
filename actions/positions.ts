@@ -16,6 +16,7 @@ import { revalidatePath } from "next/cache";
  * @param id           - The position row UUID
  * @param display_name - The person's real name, or null to clear it
  * @param email        - The new email address for this position
+ * @param phone        - The person's phone number, or null to clear it
  * @returns An error message string on failure, undefined on success
  */
 export async function updatePosition(
@@ -23,9 +24,11 @@ export async function updatePosition(
   {
     display_name,
     email,
+    phone,
   }: {
     display_name: string | null;
     email: string;
+    phone: string | null;
   }
 ): Promise<string | undefined> {
   const trimmedEmail = email.trim().toLowerCase();
@@ -74,6 +77,7 @@ export async function updatePosition(
     .update({
       display_name: display_name?.trim() || null,
       email: trimmedEmail,
+      phone: phone?.trim() || null,
     })
     .eq("id", id);
   if (updateError) return updateError.message;

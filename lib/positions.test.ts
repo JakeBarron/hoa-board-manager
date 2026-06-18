@@ -7,6 +7,15 @@ describe("POSITION_LABELS", () => {
     expect(keys).toContain("vp");
     expect(keys).toContain("grounds");
     expect(keys).toContain("cra");
+    expect(keys).toContain("children_social");
+    expect(keys).toContain("newsletter");
+    expect(keys).toContain("social_media");
+  });
+
+  it("labels the new committee chairs", () => {
+    expect(POSITION_LABELS.children_social).toBe("Children's Social");
+    expect(POSITION_LABELS.newsletter).toBe("Newsletter");
+    expect(POSITION_LABELS.social_media).toBe("Social Media");
   });
 
   it("maps vp to Vice President", () => {

@@ -14,6 +14,7 @@ interface PositionEditRowProps {
     role: string;
     email: string;
     display_name: string | null;
+    phone: string | null;
   };
 }
 
@@ -29,6 +30,7 @@ export function PositionEditRow({ position }: PositionEditRowProps) {
   const [editing, setEditing] = useState(false);
   const [displayName, setDisplayName] = useState(position.display_name ?? "");
   const [email, setEmail] = useState(position.email);
+  const [phone, setPhone] = useState(position.phone ?? "");
   const [feedback, setFeedback] = useState<{ ok: boolean; message: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -40,6 +42,7 @@ export function PositionEditRow({ position }: PositionEditRowProps) {
       const error = await updatePosition(position.id, {
         display_name: displayName.trim() || null,
         email: email.trim(),
+        phone: phone.trim() || null,
       });
       if (error) {
         setFeedback({ ok: false, message: error });
@@ -58,6 +61,7 @@ export function PositionEditRow({ position }: PositionEditRowProps) {
   const handleCancel = () => {
     setDisplayName(position.display_name ?? "");
     setEmail(position.email);
+    setPhone(position.phone ?? "");
     setFeedback(null);
     setEditing(false);
   };
@@ -77,6 +81,7 @@ export function PositionEditRow({ position }: PositionEditRowProps) {
                 <span className="italic">No name set</span>
               )}{" "}
               · {position.email}
+              {position.phone ? ` · ${position.phone}` : ""}
             </p>
           )}
         </div>
@@ -112,6 +117,19 @@ export function PositionEditRow({ position }: PositionEditRowProps) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isPending}
+              />
+            </div>
+            <div className="space-y-1">
+              <label htmlFor={`phone-${position.id}`} className="text-xs font-medium text-muted-foreground">
+                Phone
+              </label>
+              <Input
+                id={`phone-${position.id}`}
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="e.g. (555) 123-4567"
                 disabled={isPending}
               />
             </div>

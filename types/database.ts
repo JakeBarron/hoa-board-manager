@@ -21,6 +21,7 @@ export type Database = {
           role: PositionRole;
           is_voting_member: boolean;
           display_name: string | null;
+          phone: string | null;
           created_at: string;
         };
         Insert: {
@@ -30,6 +31,7 @@ export type Database = {
           role: PositionRole;
           is_voting_member?: boolean;
           display_name?: string | null;
+          phone?: string | null;
           created_at?: string;
         };
         Update: {
@@ -39,6 +41,7 @@ export type Database = {
           role?: PositionRole;
           is_voting_member?: boolean;
           display_name?: string | null;
+          phone?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -740,6 +743,39 @@ export type Database = {
         };
         Relationships: [];
       };
+      contacts: {
+        Row: {
+          id: string;
+          name: string;
+          title: string | null;
+          email: string | null;
+          phone: string | null;
+          category: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          title?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          category?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          title?: string | null;
+          email?: string | null;
+          phone?: string | null;
+          category?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -763,7 +799,10 @@ export type PositionName =
   | "architecture"
   | "welcoming"
   | "clubhouse"
-  | "cra";
+  | "cra"
+  | "children_social"
+  | "newsletter"
+  | "social_media";
 
 export type PositionRole = "president" | "officer" | "member" | "chair";
 
@@ -836,3 +875,4 @@ export type AssessmentPayment = Database["public"]["Tables"]["assessment_payment
 export type ResponsibilityArea = Database["public"]["Tables"]["responsibility_areas"]["Row"];
 export type CalendarEvent = Database["public"]["Tables"]["calendar_events"]["Row"];
 export type EventOccurrence = Database["public"]["Tables"]["event_occurrences"]["Row"];
+export type Contact = Database["public"]["Tables"]["contacts"]["Row"];

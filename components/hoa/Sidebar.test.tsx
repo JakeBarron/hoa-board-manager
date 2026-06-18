@@ -12,6 +12,7 @@ const makePosition = (overrides: Partial<Position>): Position => ({
   role: "president",
   is_voting_member: true,
   display_name: null,
+  phone: null,
   created_at: "2026-01-01T00:00:00Z",
   ...overrides,
 });
@@ -35,6 +36,7 @@ describe("Sidebar — board member view", () => {
     expect(screen.queryByRole("link", { name: "Agenda" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Amenities" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Properties" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Directory" })).toHaveAttribute("href", "/directory");
   });
 
   it("does not show Board Sections group or individual position links", () => {
@@ -75,17 +77,19 @@ describe("Sidebar — board member view", () => {
 });
 
 describe("Sidebar — chair view", () => {
-  it("shows Dashboard, My Office, Treasury, and Annual Cycle in the primary nav", () => {
+  it("shows Dashboard, My Office, Treasury, Annual Cycle, and Directory in the primary nav", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
     const primaryNav = screen.getByRole("navigation", { name: "Primary navigation" });
     const links = within(primaryNav).getAllByRole("link");
-    expect(links).toHaveLength(4);
+    expect(links).toHaveLength(5);
     expect(links[0]).toHaveTextContent("Home");
     expect(links[1]).toHaveTextContent("My Office");
     expect(links[2]).toHaveTextContent("Treasury");
     expect(links[2]).toHaveAttribute("href", "/treasury");
     expect(links[3]).toHaveTextContent("Annual Cycle");
     expect(links[3]).toHaveAttribute("href", "/calendar");
+    expect(links[4]).toHaveTextContent("Directory");
+    expect(links[4]).toHaveAttribute("href", "/directory");
   });
 
   it("My Office link points to /committee/[name] for chairs", () => {

@@ -5,27 +5,62 @@ import { CRAProjectCard } from "@/components/hoa/CRAProjectCard";
 import { compareProjects, isOpenStatus, sumEstimated, sumActual } from "@/lib/cra/projects";
 import { formatCents } from "@/lib/money";
 import { EmptyState } from "@/components/hoa/EmptyState";
-import type { CRAProject } from "@/types/database";
+import type { CRAProject, CRAQuote, CRAUpdate, CRADocument } from "@/types/database";
 
 interface FiscalYearOption { id: string; label: string }
 
 interface CRAProjectListProps {
   projects: CRAProject[];
-  quoteCounts: Record<string, number>;
+  quotesByProject: Record<string, CRAQuote[]>;
+  updatesByProject: Record<string, (CRAUpdate & { positions: { name: string } | null })[]>;
+  documentsByProject: Record<string, CRADocument[]>;
   fiscalYears: FiscalYearOption[];
+  canEdit: boolean;
+  positionId: string;
+  initialExpandedId: string | null;
 }
 
 /**
  * Client list for /cra: Open/Complete tabs, fiscal-year filter, and a totals
- * summary bar. Sorting and totals use the pure helpers from lib/cra/projects.
+ * summary bar. Cards expand inline to show full project detail. Sorting and
+ * totals use the pure helpers from lib/cra/projects.
  *
- * @param projects    - All CRA projects (any fiscal year)
- * @param quoteCounts - Map of project id → attached quote count
- * @param fiscalYears - Options for the fiscal-year filter (most-recent first)
+ * @param projects           - All CRA projects (any fiscal year)
+ * @param quotesByProject    - Map of project id → attached quotes (ordered by created_at)
+ * @param updatesByProject   - Map of project id → updates with author name (newest first)
+ * @param documentsByProject - Map of project id → documents (ordered by created_at)
+ * @param fiscalYears        - Options for the fiscal-year filter (most-recent first)
+ * @param canEdit            - Whether the current user may edit CRA data
+ * @param positionId         - Current user's position id (passed to CRADocumentsSection)
+ * @param initialExpandedId  - Project id to open on first render (from ?expand= searchParam)
  */
-export function CRAProjectList({ projects, quoteCounts, fiscalYears }: CRAProjectListProps) {
+export function CRAProjectList({
+  projects,
+  quotesByProject,
+  updatesByProject,
+  documentsByProject,
+  fiscalYears,
+  canEdit,
+  positionId,
+  initialExpandedId,
+}: CRAProjectListProps) {
   const [tab, setTab] = useState<"open" | "complete">("open");
   const [fyId, setFyId] = useState<string>("all");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(
+    () => new Set(initialExpandedId ? [initialExpandedId] : [])
+  );
+
+  const toggle = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const visible = useMemo(() => {
     return projects
@@ -81,7 +116,18 @@ export function CRAProjectList({ projects, quoteCounts, fiscalYears }: CRAProjec
       ) : (
         <div className="space-y-3">
           {visible.map((p) => (
-            <CRAProjectCard key={p.id} project={p} quoteCount={quoteCounts[p.id] ?? 0} />
+            <CRAProjectCard
+              key={p.id}
+              project={p}
+              quotes={quotesByProject[p.id] ?? []}
+              updates={updatesByProject[p.id] ?? []}
+              documents={documentsByProject[p.id] ?? []}
+              fiscalYears={fiscalYears}
+              canEdit={canEdit}
+              positionId={positionId}
+              expanded={expandedIds.has(p.id)}
+              onToggle={() => toggle(p.id)}
+            />
           ))}
         </div>
       )}

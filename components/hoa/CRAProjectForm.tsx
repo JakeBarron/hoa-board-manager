@@ -60,7 +60,7 @@ export function CRAProjectForm({
           targetDate: targetDate || null,
           fiscalYearId: fiscalYearId || null,
         });
-        router.push(`/cra/${id}`);
+        router.push(`/cra?expand=${id}`);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to create project.");
       }

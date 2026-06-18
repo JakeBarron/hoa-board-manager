@@ -146,7 +146,7 @@ export default async function DashboardPage() {
               {activeProjects.map((project) => (
                 <li key={project.id} className="text-sm">
                   <a
-                    href={`/cra/${project.id}`}
+                    href={`/cra?expand=${project.id}`}
                     className="font-medium text-primary hover:underline"
                   >
                     {project.name}

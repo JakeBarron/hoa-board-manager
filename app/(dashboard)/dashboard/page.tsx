@@ -9,6 +9,7 @@ import { formatMeetingDate } from "@/lib/dates";
 import { buildCalendarItems, upcomingItems } from "@/lib/calendar/calendar";
 import { HomesideCard } from "@/components/hoa/HomesideCard";
 import { POSITION_LABELS } from "@/lib/positions";
+import { OPEN_STATUSES } from "@/lib/cra/projects";
 import type { ArchitectureRequest, CRAProject, PositionName } from "@/types/database";
 
 export const metadata = {
@@ -38,7 +39,7 @@ export default async function DashboardPage() {
     supabase
       .from("cra_projects")
       .select("id, name, status")
-      .in("status", ["proposed", "approved", "in_progress"])
+      .in("status", OPEN_STATUSES)
       .order("created_at", { ascending: false })
       .limit(5),
     supabase

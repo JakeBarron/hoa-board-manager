@@ -6,7 +6,6 @@ Design decisions and open questions. Update the status when work begins or compl
 
 | Spec | Status | Priority |
 |---|---|---|
-| [CRA Projects](./cra-projects.md) | Designed + planned (2026-06-17, via `/grill-me` + adversarial review), not yet built — execution tracker (estimate→quotes→vendor→actual cost); needs migration 0022 (new `cra_projects`/`cra_quotes` cols, integer-cents money, `cra_updates.created_by_position`→`created_by uuid`, `is_cra_editor()` RLS), widened `canEditCRA` for the CRA chair, and the `/cra`, `/cra/new`, `/cra/[id]` pages. Implementation plan: `docs/superpowers/plans/2026-06-17-cra-projects.md`. | High |
 | [Feature Backlog (VP intake)](./feature-backlog.md) | Captured, none greenlit — 14 briefs from the VP's idea list (RSVP/quorum, vendor DB, chair history, clubhouse rental, delinquency follow-up, property counts, budget viz, social playbooks, **office knowledge base**, templates, access vault, bylaw list, lake). Promote a brief to its own spec when scheduled. | Intake |
 | Amenities (Pool / Clubhouse / Tennis) | Not started — `/amenities` is an EmptyState; no spec written. | Low |
 | Motions / voting UI | Schema-ready, no dedicated UI — `motions` + `motion_votes` exist and the meeting runner uses them, but there is no standalone motion-proposal or per-member voting interface (secretary records everything). | Low |
@@ -15,6 +14,7 @@ Design decisions and open questions. Update the status when work begins or compl
 
 | Spec | Where it shipped |
 |---|---|
+| [CRA Projects](./cra-projects.md) | `/cra` (card list, Open/Complete tabs, FY filter, totals), `/cra/new`, `/cra/[id]` (inline edit, quotes add/select/delete, immutable updates log, documents); integer-cents money (`lib/money.ts`); `actions/cra.ts`; `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`; plan at `docs/superpowers/plans/2026-06-17-cra-projects.md` |
 | [Agenda → Meetings Integration](./agenda-meeting-integration.md) | Agenda is now the start-time minutes scaffold; meetings are a sequential queue with one NEXT meeting; pre-meeting updates keyed to `meeting_id`; prep view on `/meetings/[id]` replaces `/agenda`; migration `0020` |
 | [Operating Calendar](./operating-calendar.md) | `/calendar` (Annual Cycle) — month-grouped read view + filter, president/officer admin CRUD, dashboard widget; migration `0019`; plan at `docs/superpowers/plans/2026-06-15-operating-calendar.md` |
 | [Meeting Runner](./meeting-runner.md) | `/meetings/[id]` — non-realtime, secretary-controlled |

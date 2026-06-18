@@ -173,6 +173,8 @@ Inline-editable (net-new inline-edit components — `SettingRow`/`AssessmentEdit
 - Reserve-study helper text **hyperlinks** to the Capital Reserve Analysis PDF in `/documents` (once uploaded/referenceable).
 - **Deeper treasury integration** — surface CRA estimates/actuals to the treasurer (clean now that money is integer cents on both sides).
 - `cra_quotes.updated_at` + trigger if "last edited" display is ever wanted.
+- **Quote document field** — `addQuote`/`cra_quotes.document_url` and the quote-row link exist, but the add-quote form has no upload/URL input yet, so the link is currently unreachable. Wire a `FileUploadButton`/URL input into the add-quote form (mirroring `CRADocumentsSection`, with a signed URL for storage paths) — surfaced by the final review.
+- **In-place quote edit** — `updateQuote` action exists; the UI only supports add/delete/select (fix a typo by delete + re-add for now).
 
 ## Resolved open questions
 

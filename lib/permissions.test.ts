@@ -45,15 +45,21 @@ describe("isAdmin", () => {
 
 describe("canEditCRA", () => {
   it("allows president and officer to edit CRA", () => {
-    expect(canEditCRA("president")).toBe(true);
-    expect(canEditCRA("officer")).toBe(true);
+    expect(canEditCRA("president", "president")).toBe(true);
+    expect(canEditCRA("officer", "vp")).toBe(true);
+  });
+
+  it("allows the CRA chair position regardless of chair role", () => {
+    expect(canEditCRA("chair", "cra")).toBe(true);
   });
 
   it("prevents members from editing CRA", () => {
-    expect(canEditCRA("member")).toBe(false);
+    expect(canEditCRA("member", "pool")).toBe(false);
   });
 
-  it("prevents chairs from editing CRA", () => expect(canEditCRA("chair")).toBe(false));
+  it("prevents non-CRA chairs from editing CRA", () => {
+    expect(canEditCRA("chair", "architecture")).toBe(false);
+  });
 });
 
 describe("canRecordVote", () => {

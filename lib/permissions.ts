@@ -40,13 +40,17 @@ export const isAdmin = (role: PositionRole): boolean =>
   role === "president";
 
 /**
- * Returns true if the role can edit CRA project data.
- * Any officer-level or above can manage CRA projects; members are read-only.
+ * Returns true if the user can edit CRA project data.
+ * President and officers can edit any section; the CRA committee chair
+ * (position name 'cra') can edit CRA data despite the chair role.
  *
- * @param role - The current user's position role
+ * @param role         - The current user's position role
+ * @param positionName - The current user's position name
  */
-export const canEditCRA = (role: PositionRole): boolean =>
-  canEditAll(role);
+export const canEditCRA = (
+  role: PositionRole,
+  positionName: PositionName
+): boolean => canEditAll(role) || positionName === "cra";
 
 /**
  * Returns true if the role can record architecture request vote outcomes.

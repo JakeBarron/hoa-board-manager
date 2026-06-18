@@ -116,7 +116,7 @@ app/
     agenda/                  — auto-generated HOA agenda from pre-meeting updates + mailto: reminders
     amenities/               — Pool, Clubhouse, Tennis (STUB — placeholder)
     map/                     — interactive neighborhood lot map (MapView + NeighborhoodMap); voting members only
-    cra/                     — Capital Reserve projects list (STUB — EmptyState); cra/new is a placeholder, no cra/[id] yet
+    cra/                     — Capital Reserve projects: card list + inline expand/collapse detail (header, quotes, updates, documents); cra/new create form; no cra/[id] route (detail is inline)
     documents/               — document library with signed-URL downloads
     admin/positions/         — president-only: lists positions + emails with inline edit (PositionEditRow)
     admin/settings/          — president-only: configurable settings (quorum, HOA name, meeting cadence)
@@ -221,7 +221,7 @@ supabase/
 | `member` | Treasurer, Pool, Membership, Tennis, Social | Read all + edit own section only |
 | `chair` | Web, Architecture, Welcoming, Clubhouse, CRA | Access `/dashboard` and `/committee/[their-name]` only |
 
-**Chair routing:** Every restricted dashboard page has a per-page guard — `if (isChair(role)) redirect('/committee/${name}')`. The Sidebar also renders a minimal nav (Home + My Office) for chairs. ⚠️ Permission audit pending — some pages may be missing the chair redirect guard (known: `/cra/new` accessible to chairs via direct URL).
+**Chair routing:** Every restricted dashboard page has a per-page guard — `if (isChair(role)) redirect('/committee/${name}')`. The Sidebar also renders a minimal nav (Home + My Office) for chairs, plus a CRA Projects link for the `cra` chair. The `/cra` pages intentionally let the `cra` chair through (the guard is `isChair(role) && name !== 'cra'`); `/cra/new` additionally requires `canEditCRA`.
 
 Permission checks live in `lib/permissions.ts`. RLS policies enforce the same rules at the DB layer.
 
@@ -287,11 +287,10 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - `/treasury`, `/treasury/actuals`, `/treasury/budget` — financial dashboard (cash on hand, budget vs actuals, assessment collection), YTD actuals + cash balance entry, and Homeside GL CSV import; all authenticated users read, `canEditTreasury` writes
 - `/documents` — document library with signed-URL downloads
 - Password reset — `/confirm-reset` + `/update-password` pages backed by `actions/auth.ts`
+- `/cra` — Capital Reserve projects: card list with Open/Complete tabs, FY filter, totals; cards **expand/collapse inline** to a full editable detail (status/costs, quotes add/select/delete, immutable updates log, documents) — no separate detail page. `/cra/new` create form. Integer-cents money (`lib/money.ts`), `actions/cra.ts`, `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`.
 
 ### Stubbed (page exists, placeholder only)
 - `/amenities` — Pool, Clubhouse, Tennis (`EmptyState`; no spec written yet)
-- `/cra` — `EmptyState` (see `docs/specs/cra-projects.md`)
-- `/cra/new` — "Coming soon" placeholder; no `/cra/[id]` page yet. Schema (`cra_projects`, `cra_quotes`, `cra_updates`, `cra_documents`) is ready and the dashboard reads active projects, but there is no create/edit/quote/update UI.
 
 ### Not started
 - Operating Calendar — treasurer's request: key annual dates + deliverables with templates. No route, component, or schema yet.

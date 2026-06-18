@@ -6,7 +6,7 @@ Design decisions and open questions. Update the status when work begins or compl
 
 | Spec | Status | Priority |
 |---|---|---|
-| [CRA Projects](./cra-projects.md) | Not started — schema ready (`cra_projects`, `cra_quotes`, `cra_updates`, `cra_documents`); dashboard reads active projects, but `/cra` is an EmptyState, `/cra/new` is a placeholder, and there is no `/cra/[id]`. | High |
+| [CRA Projects](./cra-projects.md) | Designed + planned (2026-06-17, via `/grill-me` + adversarial review), not yet built — execution tracker (estimate→quotes→vendor→actual cost); needs migration 0022 (new `cra_projects`/`cra_quotes` cols, integer-cents money, `cra_updates.created_by_position`→`created_by uuid`, `is_cra_editor()` RLS), widened `canEditCRA` for the CRA chair, and the `/cra`, `/cra/new`, `/cra/[id]` pages. Implementation plan: `docs/superpowers/plans/2026-06-17-cra-projects.md`. | High |
 | [Feature Backlog (VP intake)](./feature-backlog.md) | Captured, none greenlit — 14 briefs from the VP's idea list (RSVP/quorum, vendor DB, chair history, clubhouse rental, delinquency follow-up, property counts, budget viz, social playbooks, **office knowledge base**, templates, access vault, bylaw list, lake). Promote a brief to its own spec when scheduled. | Intake |
 | Amenities (Pool / Clubhouse / Tennis) | Not started — `/amenities` is an EmptyState; no spec written. | Low |
 | Motions / voting UI | Schema-ready, no dedicated UI — `motions` + `motion_votes` exist and the meeting runner uses them, but there is no standalone motion-proposal or per-member voting interface (secretary records everything). | Low |

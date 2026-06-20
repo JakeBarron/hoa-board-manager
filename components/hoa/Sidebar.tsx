@@ -65,6 +65,9 @@ export function Sidebar({ position }: SidebarProps) {
             <SidebarLink item={{ label: "Treasury", href: "/treasury" }} active={isActive("/treasury")} />
             <SidebarLink item={{ label: "Annual Cycle", href: "/calendar" }} active={isActive("/calendar")} />
             <SidebarLink item={{ label: "Directory", href: "/directory" }} active={isActive("/directory")} />
+            {position.name === "cra" && (
+              <SidebarLink item={{ label: "CRA Projects", href: "/cra" }} active={isActive("/cra")} />
+            )}
           </ul>
         </nav>
         <SidebarFooter displayName={displayName} />

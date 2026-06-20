@@ -110,6 +110,11 @@ export type Database = {
           description: string | null;
           status: CRAProjectStatus;
           estimated_cost: number | null;
+          actual_cost: number | null;
+          target_date: string | null;
+          fiscal_year_id: string | null;
+          category: string | null;
+          priority: CRAPriority | null;
           created_by: string;
           created_at: string;
           updated_at: string;
@@ -120,16 +125,25 @@ export type Database = {
           description?: string | null;
           status?: CRAProjectStatus;
           estimated_cost?: number | null;
+          actual_cost?: number | null;
+          target_date?: string | null;
+          fiscal_year_id?: string | null;
+          category?: string | null;
+          priority?: CRAPriority | null;
           created_by: string;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
-          id?: string;
           name?: string;
           description?: string | null;
           status?: CRAProjectStatus;
           estimated_cost?: number | null;
+          actual_cost?: number | null;
+          target_date?: string | null;
+          fiscal_year_id?: string | null;
+          category?: string | null;
+          priority?: CRAPriority | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -142,6 +156,10 @@ export type Database = {
           amount: number;
           notes: string | null;
           document_url: string | null;
+          contact_name: string | null;
+          contact_phone: string | null;
+          contact_email: string | null;
+          is_selected: boolean;
           created_at: string;
         };
         Insert: {
@@ -151,11 +169,21 @@ export type Database = {
           amount: number;
           notes?: string | null;
           document_url?: string | null;
+          contact_name?: string | null;
+          contact_phone?: string | null;
+          contact_email?: string | null;
+          is_selected?: boolean;
           created_at?: string;
         };
         Update: {
+          vendor_name?: string;
+          amount?: number;
           notes?: string | null;
           document_url?: string | null;
+          contact_name?: string | null;
+          contact_phone?: string | null;
+          contact_email?: string | null;
+          is_selected?: boolean;
         };
         Relationships: [];
       };
@@ -164,14 +192,14 @@ export type Database = {
           id: string;
           project_id: string;
           content: string;
-          created_by_position: PositionName;
+          created_by: string;
           created_at: string;
         };
         Insert: {
           id?: string;
           project_id: string;
           content: string;
-          created_by_position: PositionName;
+          created_by: string;
           created_at?: string;
         };
         Update: never;
@@ -818,6 +846,8 @@ export type CRAProjectStatus =
   | "in_progress"
   | "complete"
   | "on_hold";
+
+export type CRAPriority = "high" | "medium" | "low";
 
 export type DocumentUrlType = "google_doc" | "storage_file";
 

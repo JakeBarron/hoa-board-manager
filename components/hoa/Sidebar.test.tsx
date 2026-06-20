@@ -112,3 +112,17 @@ describe("Sidebar — chair view", () => {
     expect(screen.queryByText("Admin")).not.toBeInTheDocument();
   });
 });
+
+describe("Sidebar — CRA chair link", () => {
+  it("shows CRA Projects link to /cra for the cra chair", () => {
+    render(<Sidebar position={makePosition({ name: "cra", role: "chair" })} />);
+    const link = screen.getByRole("link", { name: "CRA Projects" });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/cra");
+  });
+
+  it("hides CRA Projects link from other chairs", () => {
+    render(<Sidebar position={makePosition({ name: "architecture", role: "chair" })} />);
+    expect(screen.queryByRole("link", { name: "CRA Projects" })).not.toBeInTheDocument();
+  });
+});

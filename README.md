@@ -9,8 +9,10 @@ An internal management portal for a homeowners association board. Built and main
 - **Meetings** — schedule meetings, run them live with motion recording and voting, export minutes to `.docx`, store Drive links
 - **Architecture requests** — homeowners submit requests; president records board votes inline
 - **Agenda** — auto-generated meeting agenda from submitted pre-meeting updates, with mailto: reminder links for missing submissions
-- **CRA Projects** — capital reserve project tracker (in progress)
-- **Amenities / Interactive Map** — coming soon
+- **CRA Projects** — capital reserve project tracker: estimate → 3 quotes → select vendor → actual cost; card list with inline expand/collapse detail (quotes, status updates, documents)
+- **Interactive Map** — clickable neighborhood lot map with per-property details (voting members)
+- **Treasury** — financial dashboard (cash on hand, budget vs actuals, assessment collection), YTD actuals entry, and Homeside GL CSV import
+- **Amenities** — Pool / Clubhouse / Tennis (coming soon)
 
 ## Stack
 

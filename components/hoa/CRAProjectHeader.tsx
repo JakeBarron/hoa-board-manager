@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateCRAProject, deleteCRAProject } from "@/actions/cra";
 import { formatCents, parseDollarsToCents } from "@/lib/money";
 import { InlineConfirm } from "@/components/hoa/InlineConfirm";
+import { Spinner } from "@/components/hoa/Spinner";
 import { Button } from "@/components/ui/button";
 import { StatusBadge, statusLabel } from "@/components/hoa/StatusBadge";
 import type { CRAProject, CRAProjectStatus, CRAPriority } from "@/types/database";
@@ -95,7 +96,9 @@ export function CRAProjectHeader({
     "h-9 rounded-md border border-input bg-background px-2 text-sm";
 
   return (
-    <div className="space-y-4 rounded-md border border-border p-4 text-sm">
+    <div className="space-y-4 rounded-md border border-border p-4 text-sm" aria-busy={isPending}>
+      {isPending && <Spinner label="Saving…" />}
+      <div className={`space-y-4 transition-opacity ${isPending ? "pointer-events-none opacity-50" : ""}`}>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
         <label className="space-y-1">
           <span className="text-xs text-muted-foreground">Status</span>
@@ -214,6 +217,7 @@ export function CRAProjectHeader({
             Delete project
           </Button>
         )}
+      </div>
       </div>
     </div>
   );

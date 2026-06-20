@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { addCRADocument, deleteCRADocument } from "@/actions/cra";
 import { FileUploadButton } from "@/components/hoa/FileUploadButton";
 import { InlineConfirm } from "@/components/hoa/InlineConfirm";
+import { Spinner } from "@/components/hoa/Spinner";
 import { Button } from "@/components/ui/button";
 import type { CRADocument } from "@/types/database";
 
@@ -94,7 +95,9 @@ export function CRADocumentsSection(props: CRADocumentsSectionProps) {
     });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={isPending}>
+      {isPending && <Spinner label="Saving…" />}
+      <div className={`space-y-4 transition-opacity ${isPending ? "pointer-events-none opacity-50" : ""}`}>
       {documents.length === 0 ? (
         <p className="text-sm text-muted-foreground">No documents yet.</p>
       ) : (
@@ -166,6 +169,7 @@ export function CRADocumentsSection(props: CRADocumentsSectionProps) {
           </Button>
         </form>
       )}
+      </div>
     </div>
   );
 }

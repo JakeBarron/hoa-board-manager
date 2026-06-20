@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addUpdate } from "@/actions/cra";
+import { Spinner } from "@/components/hoa/Spinner";
 import { Button } from "@/components/ui/button";
 import type { CRAUpdate } from "@/types/database";
 
@@ -38,9 +39,10 @@ export function CRAUpdatesSection({ projectId, updates, canEdit }: CRAUpdatesSec
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={isPending}>
+      {isPending && <Spinner label="Posting…" />}
       {canEdit && (
-        <form onSubmit={submit} className="space-y-2">
+        <form onSubmit={submit} className={`space-y-2 transition-opacity ${isPending ? "pointer-events-none opacity-50" : ""}`}>
           <textarea
             className="min-h-16 w-full rounded-md border border-input bg-background p-3 text-sm"
             placeholder="Add a status update…"

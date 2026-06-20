@@ -4,8 +4,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addQuote, deleteQuote, selectQuote, updateCRAProject } from "@/actions/cra";
 import { parseDollarsToCents, formatCents } from "@/lib/money";
+import { formatPhone, isValidPhone } from "@/lib/phone";
 import { quoteReadiness } from "@/lib/cra/projects";
 import { InlineConfirm } from "@/components/hoa/InlineConfirm";
+import { Spinner } from "@/components/hoa/Spinner";
 import { Button } from "@/components/ui/button";
 import type { CRAQuote } from "@/types/database";
 
@@ -48,11 +50,14 @@ export function CRAQuotesSection({ projectId, quotes, canEdit }: CRAQuotesSectio
     const cents = parseDollarsToCents(amount);
     if (!vendor.trim()) { setError("Vendor name is required."); return; }
     if (cents === null) { setError("Enter a valid amount."); return; }
+    if (contactPhone.trim() && !isValidPhone(contactPhone)) {
+      setError("Enter a valid phone number."); return;
+    }
     startTransition(async () => {
       await addQuote({
         projectId, vendorName: vendor, amount: cents,
         contactName: contactName.trim() || null,
-        contactPhone: contactPhone.trim() || null,
+        contactPhone: contactPhone.trim() ? formatPhone(contactPhone) : null,
         contactEmail: contactEmail.trim() || null,
         notes: notes.trim() || null,
       });
@@ -77,7 +82,9 @@ export function CRAQuotesSection({ projectId, quotes, canEdit }: CRAQuotesSectio
     });
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" aria-busy={isPending}>
+      {isPending && <Spinner label="Saving…" />}
+      <div className={`space-y-4 transition-opacity ${isPending ? "pointer-events-none opacity-50" : ""}`}>
       <p className={readiness.met ? "text-sm text-green-600" : "text-sm text-amber-600"}>
         {readiness.count} of {readiness.required} quotes
       </p>
@@ -94,7 +101,9 @@ export function CRAQuotesSection({ projectId, quotes, canEdit }: CRAQuotesSectio
                   )}
                 </p>
                 <p className="text-muted-foreground">
-                  {[q.contact_name, q.contact_phone, q.contact_email].filter(Boolean).join(" · ")}
+                  {[q.contact_name, q.contact_phone ? formatPhone(q.contact_phone) : null, q.contact_email]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
                 {q.notes && <p className="mt-1">{q.notes}</p>}
                 {q.document_url && (
@@ -131,7 +140,7 @@ export function CRAQuotesSection({ projectId, quotes, canEdit }: CRAQuotesSectio
           <input className={input} placeholder="Vendor name" value={vendor} onChange={(e) => setVendor(e.target.value)} disabled={isPending} />
           <input className={input} inputMode="decimal" placeholder="Amount (USD)" value={amount} onChange={(e) => setAmount(e.target.value)} disabled={isPending} />
           <input className={input} placeholder="Contact name" value={contactName} onChange={(e) => setContactName(e.target.value)} disabled={isPending} />
-          <input className={input} placeholder="Contact phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} disabled={isPending} />
+          <input className={input} type="tel" inputMode="tel" placeholder="Contact phone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} onBlur={() => contactPhone.trim() && isValidPhone(contactPhone) && setContactPhone(formatPhone(contactPhone))} disabled={isPending} />
           <input className={input} placeholder="Contact email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} disabled={isPending} />
           <textarea className="min-h-16 w-full rounded-md border border-input bg-background p-3 text-sm" placeholder="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isPending} />
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
@@ -141,6 +150,7 @@ export function CRAQuotesSection({ projectId, quotes, canEdit }: CRAQuotesSectio
           </div>
         </form>
       )}
+      </div>
     </div>
   );
 }

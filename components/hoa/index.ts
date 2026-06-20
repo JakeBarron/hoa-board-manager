@@ -30,4 +30,5 @@ export { UpcomingCalendarWidget } from "./UpcomingCalendarWidget";
 export { HomesideCard } from "./HomesideCard";
 export { ContactRow } from "./ContactRow";
 export { ContactAddForm } from "./ContactAddForm";
+export { Spinner } from "./Spinner";
 export { CRAProjectCard } from "./CRAProjectCard";

@@ -173,12 +173,20 @@ components/
     AssessmentEditPanel  — inline assessment payment editor on properties table (client)
     PropertiesView / PropertyTable — filterable property table with assessment status columns (client)
     InlineConfirm / InlineDateInput — small inline confirm + date-entry helpers (client)
+    Spinner              — small inline loading spinner with optional label (role="status"); pair with `pointer-events-none opacity-50` on the affected area for save-in-progress feedback
+    CRAProjectList / CRAProjectCard — /cra card list (Open/Complete tabs, FY filter, totals) + inline expand/collapse card (client)
+    CRAProjectHeader / CRAQuotesSection / CRAUpdatesSection / CRADocumentsSection — inline CRA detail: editable header, quotes add/select/delete, append-only updates log, document upload/link (client)
+    CRAProjectForm       — /cra/new create form; redirects to /cra?expand=<id> (client)
 
 lib/
   permissions.ts   — pure ACL: canEditAll, canEditSection, isAdmin, canEditCRA, canRecordVote, isChair, canEditTreasury
   dates.ts         — getUpcomingMondays, getUpcomingMeetingDates, parseCadence,
                      describeCadence, formatMeetingDate
   reminder.ts      — buildReminderMailto (pure; pre-filled mailto: URL for missing submissions)
+  money.ts         — parseDollarsToCents / formatCents (integer-cents money; shared by treasury + CRA)
+  phone.ts         — formatPhone ("(770) 555-1234") / isValidPhone (10-digit US, optional leading 1); use for ALL phone inputs — format on display + blur, validate-if-present on submit
+  cra/
+    projects.ts    — pure CRA helpers: OPEN_STATUSES, REQUIRED_QUOTES, isOpenStatus, compareProjects, quoteReadiness, sumEstimated, sumActual
   treasury/
     csv-parser.ts  — parseBudgetCSV (PapaParse-based; state-machine for Homeside GL format)
     actuals.ts     — latestActualsMap, buildCategoryBudgets (shared between /treasury and /treasury/actuals)
@@ -287,7 +295,7 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - `/treasury`, `/treasury/actuals`, `/treasury/budget` — financial dashboard (cash on hand, budget vs actuals, assessment collection), YTD actuals + cash balance entry, and Homeside GL CSV import; all authenticated users read, `canEditTreasury` writes
 - `/documents` — document library with signed-URL downloads
 - Password reset — `/confirm-reset` + `/update-password` pages backed by `actions/auth.ts`
-- `/cra` — Capital Reserve projects: card list with Open/Complete tabs, FY filter, totals; cards **expand/collapse inline** to a full editable detail (status/costs, quotes add/select/delete, immutable updates log, documents) — no separate detail page. `/cra/new` create form. Integer-cents money (`lib/money.ts`), `actions/cra.ts`, `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`.
+- `/cra` — Capital Reserve projects: card list with Open/Complete tabs, FY filter, totals; cards **expand/collapse inline** to a full editable detail (status/costs, quotes add/select/delete, immutable updates log, documents) — no separate detail page. `/cra/new` create form. Integer-cents money (`lib/money.ts`), `actions/cra.ts`, `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`. Quote contact phone uses `lib/phone.ts` (format on display + blur, validate-if-present); all CRA edits show inline `Spinner` + dimmed-area save feedback.
 
 ### Stubbed (page exists, placeholder only)
 - `/amenities` — Pool, Clubhouse, Tennis (`EmptyState`; no spec written yet)

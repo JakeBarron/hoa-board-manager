@@ -14,7 +14,7 @@ Design decisions and open questions. Update the status when work begins or compl
 
 | Spec | Where it shipped |
 |---|---|
-| [CRA Projects](./cra-projects.md) | `/cra` (card list, Open/Complete tabs, FY filter, totals), `/cra/new`, `/cra/[id]` (inline edit, quotes add/select/delete, immutable updates log, documents); integer-cents money (`lib/money.ts`); `actions/cra.ts`; `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`; plan at `docs/superpowers/plans/2026-06-17-cra-projects.md` |
+| [CRA Projects](./cra-projects.md) | `/cra` (card list, Open/Complete tabs, FY filter, totals; cards **expand/collapse inline** to editable detail — header, quotes add/select/delete, immutable updates log, documents — no `/cra/[id]` route), `/cra/new`; integer-cents money (`lib/money.ts`); quote phone via `lib/phone.ts`; inline `Spinner` save feedback; `actions/cra.ts`; `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`; plan at `docs/superpowers/plans/2026-06-17-cra-projects.md` |
 | [Agenda → Meetings Integration](./agenda-meeting-integration.md) | Agenda is now the start-time minutes scaffold; meetings are a sequential queue with one NEXT meeting; pre-meeting updates keyed to `meeting_id`; prep view on `/meetings/[id]` replaces `/agenda`; migration `0020` |
 | [Operating Calendar](./operating-calendar.md) | `/calendar` (Annual Cycle) — month-grouped read view + filter, president/officer admin CRUD, dashboard widget; migration `0019`; plan at `docs/superpowers/plans/2026-06-15-operating-calendar.md` |
 | [Meeting Runner](./meeting-runner.md) | `/meetings/[id]` — non-realtime, secretary-controlled |

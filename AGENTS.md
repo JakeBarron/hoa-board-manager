@@ -22,7 +22,7 @@ Internal board management portal for an HOA. Also a portfolio project for Jake (
 | Backend | Supabase — Postgres DB + Auth + Storage |
 | Hosting | Vercel |
 | Package manager | pnpm |
-| Testing | Jest + React Testing Library (326 tests, all passing) |
+| Testing | Jest + React Testing Library (331 tests, all passing) |
 | Forms | react-hook-form + zod |
 | CSV parsing | PapaParse — browser-native, handles BOM; use for all client-side CSV work |
 
@@ -110,7 +110,7 @@ app/
     meetings/                — board meeting list (upcoming + past, status badges); officer+ schedule/cancel/reschedule via inline modal
     meetings/new/            — schedule a meeting — officer+ only
     meetings/[id]/minutes/   — READ-ONLY minutes for one meeting; any signed-in position incl. chairs (no isChair guard)
-    minutes/                 — minutes archive: adjourned meetings with content on file; the chair-reachable entry point
+    minutes/                 — minutes archive: every adjourned meeting, gaps marked "No minutes on file"; the chair-reachable entry point
     architecture/            — architecture requests list with status badges + president vote form
     architecture/new/        — create request + upload homeowner PDF to Storage (officer+); multi-file FileUploadButton
     board/[position]/        — My Office for board members: todos, minutes preview, pre-meeting form
@@ -191,7 +191,7 @@ lib/
                      describeCadence, formatMeetingDate
   reminder.ts      — buildReminderMailto (pure; pre-filled mailto: URL for missing submissions)
   money.ts         — parseDollarsToCents / formatCents (integer-cents money; shared by treasury + CRA)
-  minutes.ts       — hasMinutesContent (pure; strips tags/&nbsp; so Tiptap's empty `<p></p>` reads as blank)
+  minutes.ts       — hasMinutesContent (pure; strips tags/&nbsp; so Tiptap's empty `<p></p>` reads as blank) + toMinutesArchiveRows
   phone.ts         — formatPhone ("(770) 555-1234") / isValidPhone (10-digit US, optional leading 1); use for ALL phone inputs — format on display + blur, validate-if-present on submit
   cra/
     projects.ts    — pure CRA helpers: OPEN_STATUSES, REQUIRED_QUOTES, isOpenStatus, compareProjects, quoteReadiness, sumEstimated, sumActual
@@ -302,7 +302,7 @@ Parse with `parseCadence()` and generate dates with `getUpcomingMeetingDates()` 
 - `/map` — interactive neighborhood lot map (`MapView` + `NeighborhoodMap`); click a polygon to see property details; voting members only, chairs redirected
 - `/treasury`, `/treasury/actuals`, `/treasury/budget` — financial dashboard (cash on hand, budget vs actuals, assessment collection), YTD actuals + cash balance entry, and Homeside GL CSV import; all authenticated users read, `canEditTreasury` writes
 - `/documents` — document library with signed-URL downloads
-- `/minutes` + `/meetings/[id]/minutes` — read-only minutes. The archive lists adjourned meetings whose `minutes_content` has text (`hasMinutesContent`); the detail route renders that HTML server-side into `.rich-text` via `MinutesDocument`, with a `.docx` download regenerated on demand by `/api/meetings/[id]/export`. **The only meeting route open to chairs** — no `isChair` guard, and it is the sole reason chairs have a sidebar path to minutes at all. Both queries deliberately avoid `storage_path` so the feature does not depend on Storage being wired up.
+- `/minutes` + `/meetings/[id]/minutes` — read-only minutes. The archive lists **every** adjourned meeting, marking ones with no minutes body "No minutes on file" rather than hiding them (`toMinutesArchiveRows`); the detail route renders the HTML server-side into `.rich-text` via `MinutesDocument`, with a `.docx` download regenerated on demand by `/api/meetings/[id]/export`. **The only meeting route open to chairs** — no `isChair` guard, and it is the sole reason chairs have a sidebar path to minutes at all. Both queries deliberately avoid `storage_path` so the feature does not depend on Storage being wired up. Preventing minutes-less adjournments is specced but not built — see `docs/specs/require-minutes-on-adjourn.md`.
 - Password reset — `/confirm-reset` + `/update-password` pages backed by `actions/auth.ts`
 - `/cra` — Capital Reserve projects: card list with Open/Complete tabs, FY filter, totals; cards **expand/collapse inline** to a full editable detail (status/costs, quotes add/select/delete, immutable updates log, documents) — no separate detail page. `/cra/new` create form. Integer-cents money (`lib/money.ts`), `actions/cra.ts`, `is_cra_editor()` RLS + `canEditCRA(role, name)` for the CRA chair; migration `0022`. Quote contact phone uses `lib/phone.ts` (format on display + blur, validate-if-present); all CRA edits show inline `Spinner` + dimmed-area save feedback.
 
@@ -359,7 +359,7 @@ Pages that show date pickers should:
 ```bash
 pnpm dev          # start dev server (run from /Users/jake/dev/hoa-board-manager)
 pnpm build        # production build
-pnpm test         # run Jest (326 tests)
+pnpm test         # run Jest (331 tests)
 pnpm type-check   # tsc --noEmit
 pnpm seed         # seed 13 position accounts against .env.local (e2e project)
 pnpm lint         # ESLint

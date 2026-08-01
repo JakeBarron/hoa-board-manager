@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { isChair } from "@/lib/permissions";
 import { formatMeetingDate } from "@/lib/dates";
-import { hasMinutesContent } from "@/lib/minutes";
+import { toMinutesArchiveRows } from "@/lib/minutes";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
@@ -14,12 +15,15 @@ export const metadata = { title: "Minutes — HOA Board" };
 const ARCHIVE_LIMIT = 24;
 
 /**
- * Archive of adjourned board meetings whose minutes are on file.
+ * Archive of adjourned board meetings and their minutes.
  *
  * This is the entry point that makes minutes readable by everyone on the board,
  * chairs included — chairs are redirected away from `/meetings`, so without this
  * list they would have no way to navigate to a minutes page. Read-only, so the
  * only gate is being signed in.
+ *
+ * Meetings that adjourned without minutes are listed and marked rather than
+ * hidden, so a gap in the record is visible to the board.
  */
 export default async function MinutesArchivePage() {
   const supabase = await createClient();
@@ -29,57 +33,89 @@ export default async function MinutesArchivePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const meetingsResult = await supabase
-    .from("meetings")
-    .select("id, meeting_date, minutes_content")
-    .eq("status", "adjourned")
-    .order("meeting_date", { ascending: false })
-    .limit(ARCHIVE_LIMIT);
+  const [positionResult, meetingsResult] = await Promise.all([
+    supabase.from("positions").select("id, name, role").eq("email", user.email!).single(),
+    supabase
+      .from("meetings")
+      .select("id, meeting_date, minutes_content")
+      .eq("status", "adjourned")
+      .order("meeting_date", { ascending: false })
+      .limit(ARCHIVE_LIMIT),
+  ]);
+
+  const currentPosition = positionResult.data;
+  if (!currentPosition) redirect("/login");
 
   const meetings = (meetingsResult.data ?? []) as Pick<
     Meeting,
     "id" | "meeting_date" | "minutes_content"
   >[];
 
-  // An adjourned meeting with an empty minutes body has nothing to read, so it
-  // is left out rather than shown as a dead link.
-  const withMinutes = meetings.filter((m) => hasMinutesContent(m.minutes_content));
+  const rows = toMinutesArchiveRows(meetings);
+  const missingCount = rows.filter((row) => !row.hasMinutes).length;
+
+  // Chairs cannot open /meetings/[id], so they get the marker without the fix-it link.
+  const canOpenMeeting = !isChair(currentPosition.role);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Minutes"
-        subtitle="Approved minutes from past board meetings"
+        subtitle="Minutes from past board meetings"
       />
 
       <SectionCard
         title="Past Meetings"
         description={
-          withMinutes.length > 0
-            ? `${withMinutes.length} ${withMinutes.length === 1 ? "meeting" : "meetings"} on file`
+          missingCount > 0
+            ? `${missingCount} of ${rows.length} adjourned ${rows.length === 1 ? "meeting has" : "meetings have"} no minutes on file`
             : undefined
         }
       >
-        {withMinutes.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState
-            title="No minutes on file yet"
-            description="Minutes appear here once a meeting has been adjourned and the secretary has saved them."
+            title="No past meetings yet"
+            description="Meetings appear here once they have been adjourned."
           />
         ) : (
           <ul className="divide-y divide-border">
-            {withMinutes.map((meeting) => (
-              <li key={meeting.id}>
-                <Link
-                  href={`/meetings/${meeting.id}/minutes`}
-                  className="flex items-center justify-between gap-4 px-1 py-3 text-sm transition-colors hover:bg-muted/50"
+            {rows.map((row) =>
+              row.hasMinutes ? (
+                <li key={row.id}>
+                  <Link
+                    href={`/meetings/${row.id}/minutes`}
+                    className="flex items-center justify-between gap-4 px-1 py-3 text-sm transition-colors hover:bg-muted/50"
+                  >
+                    <span className="font-medium">
+                      {formatMeetingDate(row.meetingDate)}
+                    </span>
+                    <span className="text-muted-foreground">Read minutes →</span>
+                  </Link>
+                </li>
+              ) : (
+                <li
+                  key={row.id}
+                  className="flex items-center justify-between gap-4 px-1 py-3 text-sm"
                 >
-                  <span className="font-medium">
-                    {formatMeetingDate(meeting.meeting_date)}
+                  <span className="font-medium text-muted-foreground">
+                    {formatMeetingDate(row.meetingDate)}
                   </span>
-                  <span className="text-muted-foreground">Read minutes →</span>
-                </Link>
-              </li>
-            ))}
+                  <span className="flex items-center gap-3">
+                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      No minutes on file
+                    </span>
+                    {canOpenMeeting && (
+                      <Link
+                        href={`/meetings/${row.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        Open meeting →
+                      </Link>
+                    )}
+                  </span>
+                </li>
+              )
+            )}
           </ul>
         )}
       </SectionCard>

@@ -178,12 +178,18 @@ describe("MeetingRow", () => {
   });
 
   it("saving a reschedule date calls rescheduleMeeting with the meeting id and date", async () => {
+    // InlineDateInput disables Save for anything before tomorrow, so the date has
+    // to be computed from today — a hardcoded one silently expires.
+    const future = new Date();
+    future.setDate(future.getDate() + 7);
+    const futureDate = future.toISOString().split("T")[0];
+
     const { container } = render(<MeetingRow meeting={pendingMeeting} canSchedule={true} />);
     await userEvent.click(screen.getByRole("button", { name: /reschedule/i }));
     const input = container.querySelector("input[type='date']") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "2026-08-01" } });
+    fireEvent.change(input, { target: { value: futureDate } });
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(rescheduleMeeting).toHaveBeenCalledWith("meeting-1", "2026-08-01");
+    expect(rescheduleMeeting).toHaveBeenCalledWith("meeting-1", futureDate);
   });
 
   it("shows an error alert when cancelMeeting throws", async () => {

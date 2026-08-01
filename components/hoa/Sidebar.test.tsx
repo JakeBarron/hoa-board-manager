@@ -31,6 +31,7 @@ describe("Sidebar — board member view", () => {
   it("shows all function nav items", () => {
     render(<Sidebar position={makePosition({ role: "president" })} />);
     expect(screen.getByRole("link", { name: "Meetings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Minutes" })).toHaveAttribute("href", "/minutes");
     expect(screen.getByRole("link", { name: "Architecture" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "CRA Projects" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Agenda" })).not.toBeInTheDocument();
@@ -77,19 +78,27 @@ describe("Sidebar — board member view", () => {
 });
 
 describe("Sidebar — chair view", () => {
-  it("shows Dashboard, My Office, Treasury, Annual Cycle, and Directory in the primary nav", () => {
+  it("shows Dashboard, My Office, Minutes, Treasury, Annual Cycle, and Directory in the primary nav", () => {
     render(<Sidebar position={makePosition({ name: "web", role: "chair" })} />);
     const primaryNav = screen.getByRole("navigation", { name: "Primary navigation" });
     const links = within(primaryNav).getAllByRole("link");
-    expect(links).toHaveLength(5);
+    expect(links).toHaveLength(6);
     expect(links[0]).toHaveTextContent("Home");
     expect(links[1]).toHaveTextContent("My Office");
-    expect(links[2]).toHaveTextContent("Treasury");
-    expect(links[2]).toHaveAttribute("href", "/treasury");
-    expect(links[3]).toHaveTextContent("Annual Cycle");
-    expect(links[3]).toHaveAttribute("href", "/calendar");
-    expect(links[4]).toHaveTextContent("Directory");
-    expect(links[4]).toHaveAttribute("href", "/directory");
+    expect(links[2]).toHaveTextContent("Minutes");
+    expect(links[2]).toHaveAttribute("href", "/minutes");
+    expect(links[3]).toHaveTextContent("Treasury");
+    expect(links[3]).toHaveAttribute("href", "/treasury");
+    expect(links[4]).toHaveTextContent("Annual Cycle");
+    expect(links[4]).toHaveAttribute("href", "/calendar");
+    expect(links[5]).toHaveTextContent("Directory");
+    expect(links[5]).toHaveAttribute("href", "/directory");
+  });
+
+  it("gives chairs a Minutes link even though /meetings is closed to them", () => {
+    render(<Sidebar position={makePosition({ name: "welcoming", role: "chair" })} />);
+    expect(screen.getByRole("link", { name: "Minutes" })).toHaveAttribute("href", "/minutes");
+    expect(screen.queryByRole("link", { name: "Meetings" })).not.toBeInTheDocument();
   });
 
   it("My Office link points to /committee/[name] for chairs", () => {

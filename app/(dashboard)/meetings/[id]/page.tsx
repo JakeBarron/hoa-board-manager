@@ -596,6 +596,15 @@ export default async function MeetingDetailPage({
         }
       >
         <div className="space-y-4">
+          <div className="text-sm">
+            <Link
+              href={`/meetings/${meeting.id}/minutes`}
+              className="text-primary hover:underline"
+            >
+              Read minutes in browser →
+            </Link>
+          </div>
+
           {minutesSignedUrl || meeting.minutes_drive_url || primaryMinutesDoc ? (
             <div className="text-sm">
               <span className="font-medium">Minutes: </span>

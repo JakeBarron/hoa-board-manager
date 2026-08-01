@@ -7,6 +7,7 @@ export type { AppStatus } from "./StatusBadge";
 export { TodoList } from "./TodoList";
 export { RichTextEditor } from "./RichTextEditor";
 export { MinutesForm } from "./MinutesForm";
+export { MinutesDocument } from "./MinutesDocument";
 export { PreMeetingForm } from "./PreMeetingForm";
 export { MeetingRunnerModal } from "./MeetingRunnerModal";
 export type { MeetingRunnerModalProps } from "./MeetingRunnerModal";

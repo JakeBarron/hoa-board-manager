@@ -22,7 +22,7 @@ Internal board management portal for an HOA. Also a portfolio project for Jake (
 | Backend | Supabase — Postgres DB + Auth + Storage |
 | Hosting | Vercel |
 | Package manager | pnpm |
-| Testing | Jest + React Testing Library (331 tests, all passing) |
+| Testing | Jest + React Testing Library (345 tests, all passing) |
 | Forms | react-hook-form + zod |
 | CSV parsing | PapaParse — browser-native, handles BOM; use for all client-side CSV work |
 
@@ -192,6 +192,7 @@ lib/
   reminder.ts      — buildReminderMailto (pure; pre-filled mailto: URL for missing submissions)
   money.ts         — parseDollarsToCents / formatCents (integer-cents money; shared by treasury + CRA)
   minutes.ts       — hasMinutesContent (pure; strips tags/&nbsp; so Tiptap's empty `<p></p>` reads as blank) + toMinutesArchiveRows
+  sanitize.ts      — sanitizeMinutesHtml; **server-only**. Run stored HTML through this before ANY dangerouslySetInnerHTML — `meetings` RLS is `insert WITH CHECK (true)` + `update USING (called_by = self OR is_president())`, so any of the 13 positions can PATCH arbitrary HTML into `minutes_content` via the REST API without touching Tiptap
   phone.ts         — formatPhone ("(770) 555-1234") / isValidPhone (10-digit US, optional leading 1); use for ALL phone inputs — format on display + blur, validate-if-present on submit
   cra/
     projects.ts    — pure CRA helpers: OPEN_STATUSES, REQUIRED_QUOTES, isOpenStatus, compareProjects, quoteReadiness, sumEstimated, sumActual
@@ -359,7 +360,7 @@ Pages that show date pickers should:
 ```bash
 pnpm dev          # start dev server (run from /Users/jake/dev/hoa-board-manager)
 pnpm build        # production build
-pnpm test         # run Jest (331 tests)
+pnpm test         # run Jest (345 tests)
 pnpm type-check   # tsc --noEmit
 pnpm seed         # seed 13 position accounts against .env.local (e2e project)
 pnpm lint         # ESLint

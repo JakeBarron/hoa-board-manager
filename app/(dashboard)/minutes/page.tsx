@@ -11,8 +11,6 @@ import type { Meeting } from "@/types/database";
 
 export const metadata = { title: "Minutes — HOA Board" };
 
-/** How many past meetings the archive lists. */
-const ARCHIVE_LIMIT = 24;
 
 /**
  * Archive of adjourned board meetings and their minutes.
@@ -35,12 +33,17 @@ export default async function MinutesArchivePage() {
 
   const [positionResult, meetingsResult] = await Promise.all([
     supabase.from("positions").select("id, name, role").eq("email", user.email!).single(),
+    // Unpaginated on purpose: the board meets monthly, so this table grows by
+    // roughly a dozen rows a year. A LIMIT here would silently hide the oldest
+    // minutes — and for chairs this page is the only route to them. created_at
+    // breaks ties because duplicate rows share a meeting_date in practice, and
+    // Postgres does not guarantee a stable order among equal keys.
     supabase
       .from("meetings")
       .select("id, meeting_date, minutes_content")
       .eq("status", "adjourned")
       .order("meeting_date", { ascending: false })
-      .limit(ARCHIVE_LIMIT),
+      .order("created_at", { ascending: false }),
   ]);
 
   const currentPosition = positionResult.data;

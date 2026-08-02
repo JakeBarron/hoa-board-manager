@@ -7,6 +7,7 @@ Design decisions and open questions. Update the status when work begins or compl
 | Spec | Status | Priority |
 |---|---|---|
 | [Feature Backlog (VP intake)](./feature-backlog.md) | Captured, none greenlit — 14 briefs from the VP's idea list (RSVP/quorum, vendor DB, chair history, clubhouse rental, delinquency follow-up, property counts, budget viz, social playbooks, **office knowledge base**, templates, access vault, bylaw list, lake). Promote a brief to its own spec when scheduled. | Intake |
+| [Require Minutes on Adjournment](./require-minutes-on-adjourn.md) | Not started — a meeting can adjourn with no minutes body and nothing blocks or flags it. `/minutes` now marks the gaps; this spec covers preventing them. | Medium |
 | Amenities (Pool / Clubhouse / Tennis) | Not started — `/amenities` is an EmptyState; no spec written. | Low |
 | Motions / voting UI | Schema-ready, no dedicated UI — `motions` + `motion_votes` exist and the meeting runner uses them, but there is no standalone motion-proposal or per-member voting interface (secretary records everything). | Low |
 

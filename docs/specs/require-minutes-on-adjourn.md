@@ -27,11 +27,41 @@ gaps are at least *visible*. This spec covers preventing them.
 
 ## Evidence
 
-The e2e database has several adjourned meetings with an empty or absent `minutes_content`,
-including multiple adjourned rows sharing a single `meeting_date`. That pattern suggests the
-meeting runner is being opened and adjourned more than once per meeting, which is worth
-understanding before choosing a fix — a hard block on the *second* adjournment of a duplicate row
-would be annoying, not helpful.
+Measured against the e2e database on 2026-08-02 — 13 adjourned meetings:
+
+| State | Count | Detected by `hasMinutesContent`? |
+|---|---|---|
+| Real minutes typed by the secretary | 8 | yes |
+| `minutes_content = ''` (never opened in the runner) | 2 | yes — marked |
+| **Untouched agenda scaffold** | **3** | **no — counted as having minutes** |
+
+The third row is the problem, and it is the *common* case: it is what a meeting that was opened in
+the runner and adjourned without a word typed actually looks like. `buildMeetingScaffold`
+(`lib/agenda.ts:116`) emits literal prose for every section, so those rows are ~450–750 characters
+of text with nothing in them:
+
+```html
+<h2>Call to Order</h2><p>Called to order by Grounds — Jamie, seconded by Membership.</p>
+<p>Present: … Quorum met.</p>
+<h2>Board Reports</h2><h3>President</h3><p>—</p><h3>Vice President</h3><p>—</p> …
+<h2>New Business</h2><p><em>None.</em></p><h2>Adjournment</h2><p></p>
+```
+
+So `/minutes` currently reports "2 of 13 … have no minutes on file" when the truthful figure is 5
+of 13, and it renders an empty scaffold as the official record with no marker.
+
+Note the placeholder text has already drifted once — older rows say `<em>No update submitted.</em>`
+where current ones say `—`. Any detection built on matching boilerplate strings will rot the next
+time `lib/agenda.ts` changes. Prefer an exact signal: have `seedMeetingScaffold`
+(`actions/meetings.ts:218`) record what it seeded (a `meetings.scaffold_hash` column, say), so
+"has real minutes" becomes `minutes_content` differing from the seeded scaffold — no string
+matching, no drift. That needs a migration, which is why it belongs here rather than in the
+read-only view.
+
+The e2e data also has multiple adjourned rows sharing a single `meeting_date` (three on 2026-06-16,
+two on 2026-07-21). That suggests the runner is being opened and adjourned more than once per
+meeting, which is worth understanding before choosing a fix — a hard block on the *second*
+adjournment of a duplicate row would be annoying, not helpful.
 
 ## Approaches
 
@@ -60,8 +90,12 @@ adjourned rows are understood.
    source of the empty rows.
 2. Should the president/secretary be able to add minutes to an already-adjourned meeting? There is
    no UI for that today, and any of these approaches needs one as the escape hatch.
-3. Does an empty agenda scaffold count as minutes? `hasMinutesContent()` already strips tags, so a
-   scaffold of empty headings reads as blank — confirm that is the desired rule.
+3. Does a scaffold carrying only submitted *pre-meeting updates* count as minutes? A scaffold with
+   all-placeholder bodies clearly does not. But if board members submitted updates and those got
+   folded in, the document has genuine content even though the secretary typed nothing during the
+   meeting. The `scaffold_hash` approach above answers this automatically — the seeded scaffold
+   already contains the updates, so only in-meeting edits count — but confirm that is the wanted
+   rule.
 
 ## Starting points
 

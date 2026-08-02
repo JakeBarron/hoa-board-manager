@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/hoa/EmptyState";
 import { hasMinutesContent } from "@/lib/minutes";
+import { sanitizeMinutesHtml } from "@/lib/sanitize";
 
 interface MinutesDocumentProps {
   /** Tiptap-authored HTML from `meetings.minutes_content`, or null when none is on file */
@@ -15,11 +16,12 @@ interface MinutesDocumentProps {
  * arrive as server HTML — selectable, printable, and free of editor JavaScript.
  * Typography comes from the shared `.rich-text` rules in `app/globals.css`.
  *
- * The HTML is trusted: it is produced by the meeting runner's Tiptap editor and
- * writable only by authenticated officers under the `meetings` RLS update
- * policy. It is never accepted from homeowners or any anonymous source.
+ * **Server-only** — `sanitizeMinutesHtml` is a Node module. The content is NOT
+ * trusted: `meetings` RLS lets any of the 13 authenticated positions write
+ * `minutes_content` through the REST API without going near Tiptap, so it is
+ * run through an allowlist before injection. See `lib/sanitize.ts`.
  *
- * @param content          - Raw minutes HTML, or null when no minutes exist
+ * @param content          - Untrusted minutes HTML, or null when no minutes exist
  * @param emptyDescription - Optional explanation rendered in the empty state
  */
 export function MinutesDocument({
@@ -41,7 +43,7 @@ export function MinutesDocument({
   return (
     <div
       className="rich-text text-sm"
-      dangerouslySetInnerHTML={{ __html: content }}
+      dangerouslySetInnerHTML={{ __html: sanitizeMinutesHtml(content) }}
     />
   );
 }

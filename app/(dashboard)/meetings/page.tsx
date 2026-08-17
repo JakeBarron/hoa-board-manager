@@ -54,7 +54,7 @@ export default async function MeetingsPage() {
       supabase
         .from("settings")
         .select("key, value")
-        .in("key", ["hoa_name", "drive_folder_url", "meeting_cadence"]),
+        .in("key", ["meeting_cadence", "quorum_required"]),
     ]);
 
   const position = positionResult.data;
@@ -93,8 +93,8 @@ export default async function MeetingsPage() {
   const settingsMap = new Map(
     (settingsResult.data ?? []).map((s) => [s.key, s.value])
   );
-  const hoaName = settingsMap.get("hoa_name");
-  const driveFolder = settingsMap.get("drive_folder_url");
+  const parsedQuorum = parseInt(settingsMap.get("quorum_required") ?? "", 10);
+  const quorumRequired = Number.isFinite(parsedQuorum) ? parsedQuorum : 5;
 
   const cadence = settingsMap.get("meeting_cadence") ?? "";
   const bookedDates = new Set(upcoming.map((m) => m.meeting_date));
@@ -112,9 +112,8 @@ export default async function MeetingsPage() {
       existingMeeting={existingMeeting}
       upcoming={upcoming}
       past={past}
-      hoaName={hoaName}
-      driveFolder={driveFolder}
       defaultScheduleDate={defaultScheduleDate}
+      quorumRequired={quorumRequired}
     />
   );
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ScheduleMeetingModal } from "@/components/hoa/ScheduleMeetingModal";
 import { PageHeader } from "@/components/hoa/PageHeader";
 import { SectionCard } from "@/components/hoa/SectionCard";
 import { EmptyState } from "@/components/hoa/EmptyState";
-import { MeetingRunnerModal } from "@/components/hoa/MeetingRunnerModal";
+import { MeetingRunner } from "@/components/hoa/MeetingRunner";
 import { MeetingRow } from "./MeetingRow";
 import type { Meeting } from "@/types/database";
 
@@ -33,12 +34,10 @@ interface MeetingListClientProps {
   upcoming: Pick<Meeting, "id" | "meeting_date" | "status">[];
   /** Past meetings */
   past: Pick<Meeting, "id" | "meeting_date" | "status">[];
-  /** Google Drive folder URL from settings */
-  driveFolder?: string;
-  /** HOA name from settings */
-  hoaName?: string;
   /** ISO date (YYYY-MM-DD) pre-filled in the schedule modal — next available cadence date */
   defaultScheduleDate: string;
+  /** Voting members needed for quorum, from `settings.quorum_required` */
+  quorumRequired: number;
 }
 
 /**
@@ -56,6 +55,7 @@ interface MeetingListClientProps {
  * @param upcoming            - Upcoming meeting rows
  * @param past                - Past meeting rows
  * @param defaultScheduleDate - ISO date pre-filled in the schedule modal (next available cadence date)
+ * @param quorumRequired      - Voting members needed for quorum
  */
 export function MeetingListClient({
   canRun,
@@ -65,13 +65,15 @@ export function MeetingListClient({
   existingMeeting,
   upcoming,
   past,
-  driveFolder,
-  hoaName,
   defaultScheduleDate,
+  quorumRequired,
 }: MeetingListClientProps) {
-  const [modalMeetingId, setModalMeetingId] = useState<string | null>(null);
-  const [resolvedExistingMeeting, setResolvedExistingMeeting] =
-    useState(existingMeeting);
+  const router = useRouter();
+  /** The meeting the runner is open on, with the status its row reported. */
+  const [openMeeting, setOpenMeeting] = useState<{
+    id: string;
+    status: "pending" | "in_progress";
+  } | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
   const [startErrorRowId, setStartErrorRowId] = useState<string | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -82,26 +84,29 @@ export function MeetingListClient({
   ) => {
     setStartError(null);
     setStartErrorRowId(null);
-    if (
-      resolvedExistingMeeting?.status === "in_progress" &&
-      resolvedExistingMeeting.id !== meetingId
-    ) {
+    // Guard against the server's view of what is running, not a local snapshot.
+    // This used to read a useState initializer that never re-synced with props,
+    // so after adjourning one meeting, starting the next showed a false
+    // "already in progress" error until the page was hard-reloaded.
+    if (existingMeeting?.status === "in_progress" && existingMeeting.id !== meetingId) {
       setStartError(
         "A meeting is already in progress — adjourn it before starting a new one."
       );
       setStartErrorRowId(meetingId);
       return;
     }
-    setResolvedExistingMeeting({ id: meetingId, status: meetingStatus });
-    setModalMeetingId(meetingId);
+    setOpenMeeting({ id: meetingId, status: meetingStatus });
   };
 
   const handleClose = () => {
-    setModalMeetingId(null);
+    setOpenMeeting(null);
+    // Pull fresh meeting statuses so the next Start decision isn't made against
+    // the state this session just changed.
+    router.refresh();
   };
 
-  const modalMeeting = modalMeetingId
-    ? [...upcoming, ...past].find((m) => m.id === modalMeetingId)
+  const openMeetingRow = openMeeting
+    ? [...upcoming, ...past].find((m) => m.id === openMeeting.id)
     : null;
 
   return (
@@ -175,16 +180,14 @@ export function MeetingListClient({
         />
       )}
 
-      {modalMeetingId && modalMeeting && (
-        <MeetingRunnerModal
+      {openMeeting && openMeetingRow && (
+        <MeetingRunner
           positions={positions}
-          currentPositionId={currentPositionId}
-          existingMeeting={resolvedExistingMeeting}
+          existingMeeting={openMeeting}
           onClose={handleClose}
-          meetingId={modalMeetingId}
-          meetingDate={modalMeeting.meeting_date}
-          driveFolder={driveFolder}
-          hoaName={hoaName}
+          meetingId={openMeeting.id}
+          meetingDate={openMeetingRow.meeting_date}
+          quorumRequired={quorumRequired}
         />
       )}
     </>

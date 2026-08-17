@@ -35,9 +35,13 @@ Each `motion_vote` record:
 | `voted_at` | Timestamp |
 
 Rules:
-- A member can only cast their own vote (RLS enforces this)
-- President can override any vote to `absent` or `no_vote` — always attributed via `recorded_by`
-- Votes are **immutable** once the meeting is adjourned — no update/delete policies exist on `motion_votes`
+- A member may always cast their own vote; **any officer (president, VP, secretary) may record a
+  vote on another position's behalf** — the runner is single-operator, so one person captures the
+  whole board's slate. Widened in `0023_meeting_runner_write_rls.sql`; the original
+  self-or-president rule made a secretary-run meeting fail outright (see that migration's header).
+- `recorded_by` is what distinguishes an operator-recorded vote from a self-cast one, and is the
+  audit trail for president overrides to `absent` or `no_vote`
+- Votes are **immutable** — no update/delete policies exist on `motion_votes`, deliberately
 - Corrections require a new amendment motion referencing the original
 
 ## Quorum
@@ -46,7 +50,10 @@ Rules:
 - Meeting can proceed with quorum even if some members are absent
 
 ## Real-time
-Use **Supabase Realtime** (Postgres logical replication). All participants subscribe to changes on `meetings`, `motions`, and `motion_votes` for the active meeting ID. No separate WebSocket infrastructure needed.
+**Not used, and deliberately so.** An earlier draft of this spec called for Supabase Realtime with
+every participant subscribed to `meetings`, `motions`, and `motion_votes`. It was never built and
+the single-operator model was re-confirmed in 2026-08: a volunteer board sitting around one table
+does not need distributed state, and the failure modes cost more than the feature is worth.
 
 ## Minutes
 - Secretary types live in a Tiptap WYSIWYG editor during the meeting

@@ -174,7 +174,6 @@ export default async function MeetingDetailPage({
         meetingId={meeting.id}
         meetingDate={meeting.meeting_date}
         reminderSentAt={meeting.reminder_sent_at}
-        currentPositionId={currentPosition.id}
         currentRole={currentPosition.role}
       />
     );
@@ -186,7 +185,6 @@ export default async function MeetingDetailPage({
     meetingDocsResult,
     quorumSettingResult,
     actionItemsResult,
-    runnerSettingsResult,
   ] = await Promise.all([
     supabase.from("positions").select("id, name, role, is_voting_member, display_name"),
     supabase
@@ -211,7 +209,6 @@ export default async function MeetingDetailPage({
       .select("id, title, position_id, completed, due_date")
       .eq("meeting_id", id)
       .order("created_at", { ascending: true }),
-    supabase.from("settings").select("key, value").in("key", ["hoa_name", "drive_folder_url"]),
   ]);
 
   const allPositions = (allPositionsResult.data ?? []) as {
@@ -322,9 +319,6 @@ export default async function MeetingDetailPage({
 
   // Resume affordance: officers/president can re-enter a meeting that is underway.
   const canResume = isOfficerOrAbove && meeting.status === "in_progress";
-  const runnerSettings = new Map(
-    (runnerSettingsResult.data ?? []).map((s) => [s.key, s.value])
-  );
   const runnerPositions = allPositions
     .filter((p) => p.role !== "chair")
     .map((p) => ({
@@ -355,12 +349,10 @@ export default async function MeetingDetailPage({
             {canResume && (
               <StartMeetingButton
                 positions={runnerPositions}
-                currentPositionId={currentPosition.id}
                 meetingId={meeting.id}
                 meetingDate={meeting.meeting_date}
                 status="in_progress"
-                driveFolder={runnerSettings.get("drive_folder_url")}
-                hoaName={runnerSettings.get("hoa_name")}
+                quorumRequired={quorumRequired}
               />
             )}
             <Link

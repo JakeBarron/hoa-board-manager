@@ -18,7 +18,6 @@ interface MeetingPrepProps {
   meetingDate: string;
   /** reminder_sent_at timestamp on the meeting, or null */
   reminderSentAt: string | null;
-  currentPositionId: string;
   currentRole: PositionRole;
 }
 
@@ -32,14 +31,12 @@ interface MeetingPrepProps {
  * @param meetingId         - UUID of the pending meeting
  * @param meetingDate       - ISO date (YYYY-MM-DD) of the meeting
  * @param reminderSentAt    - When a reminder was last sent, or null
- * @param currentPositionId - Logged-in user's position UUID
  * @param currentRole       - Logged-in user's role
  */
 export async function MeetingPrep({
   meetingId,
   meetingDate,
   reminderSentAt,
-  currentPositionId,
   currentRole,
 }: MeetingPrepProps) {
   const supabase = await createClient();
@@ -53,7 +50,7 @@ export async function MeetingPrep({
       .order("meeting_date", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase.from("settings").select("key, value").in("key", ["hoa_name", "drive_folder_url"]),
+    supabase.from("settings").select("key, value").in("key", ["quorum_required"]),
   ]);
 
   const allPositions = (positionsResult.data ?? []) as {
@@ -95,8 +92,8 @@ export async function MeetingPrep({
   const priorMinutes = priorMinutesResult.data;
 
   const settingsMap = new Map((settingsResult.data ?? []).map((s) => [s.key, s.value]));
-  const hoaName = settingsMap.get("hoa_name");
-  const driveFolder = settingsMap.get("drive_folder_url");
+  const parsedQuorum = parseInt(settingsMap.get("quorum_required") ?? "", 10);
+  const quorumRequired = Number.isFinite(parsedQuorum) ? parsedQuorum : 5;
 
   const boardPositions = allPositions.filter((p) =>
     (BOARD_POSITION_ORDER as string[]).includes(p.name)
@@ -170,11 +167,9 @@ export async function MeetingPrep({
             {isOfficerOrAbove && (
               <StartMeetingButton
                 positions={runnerPositions}
-                currentPositionId={currentPositionId}
                 meetingId={meetingId}
                 meetingDate={meetingDate}
-                driveFolder={driveFolder}
-                hoaName={hoaName}
+                quorumRequired={quorumRequired}
               />
             )}
             <Link

@@ -1,13 +1,119 @@
 # Feature Backlog — VP Idea Intake
 
-> **Status:** Ideas captured, none greenlit. (Intake 2026-06-15.)
-> Each brief below is a *sketch*, not a build. Table/column names are illustrative — promote a
-> brief to its own `docs/specs/*.md` spec (with a real data model + build sequence) when the board
-> schedules it.
+> **Status:** Ideas captured + triaged into a dependency-ordered spec roadmap (triaged 2026-06-20).
+> None greenlit for build yet. Each brief below is a *sketch*, not a build. Table/column names are
+> illustrative — promote a brief to its own `docs/specs/*.md` spec (with a real data model + build
+> sequence) when the board schedules it, in the order given under **Spec-writing roadmap**.
 
 Source: ~13 feature ideas from the HOA vice president, plus one unifying idea (the Office Knowledge
 Base, #9) that emerged while making them concrete. Goal: get them concrete and actionable so the
 board can tackle them later without re-deriving intent.
+
+---
+
+## Coverage confirmed
+
+**Every VP idea is captured below — nothing was dropped.** The VP's list maps onto the 14 briefs
+one-to-one (the 14th, the Office Knowledge Base, is the unifying idea that ties several together):
+
+| VP request | Brief | In-app starting point today |
+|---|---|---|
+| Meeting RSVP + quorum reminder | #1 | `quorum_required` setting + `meetings.present_positions` (no *pre*-meeting RSVP) |
+| Past/current vendor & contract database | #2 | vendor names only as free text in `cra_quotes`; documents library |
+| Past/current chair history | #3 | `positions` holds current occupant only |
+| Clubhouse rental approval | #4 | `/amenities` stub |
+| Membership dues >60 days follow-up | #5 | `assessment_payments` status + `/properties?status=unpaid` |
+| Map/properties — count of each type | #6 | properties + map color-coded by type; no counts shown |
+| Budget in tab + visual progress | #7 | **mostly built** — treasury shows budget vs. actual + % bars |
+| Social events database + playbooks | #8 | nothing (operating calendar ≠ social events) |
+| Templates (annual letter / PowerPoint) | #10 | documents library (`waiver \| contract \| other`) |
+| Access codes (lockbox / pump room / phones) | #11 | nothing — credential-storage blocker |
+| Pool common-problem how-tos + video | #12 → folds into #9 | nothing |
+| Future bylaw update considerations | #13 | nothing |
+| Lake maintenance / dredging timeline | #14 → ties to Operating Calendar | lake drawn on `/map` only |
+
+---
+
+## Dependency map
+
+Two **foundations** that other briefs hang off — spec/build these first so dependents slot in
+cleanly instead of being re-specced later:
+
+- **Operating Calendar** — *already designed & ready to build* (`operating-calendar.md`). The home
+  for recurring/annual dates. **Social events (#8)** and **Lake maintenance (#14)** feed it.
+- **#9 Office Knowledge Base** — the new spine for office-keyed how-tos/narrative. **Pool how-tos
+  (#12)**, **Chair/office history narrative (#3)**, and general office tips all feed it.
+
+```
+Operating Calendar ──feeds── #8 Social events
+        └──feeds── #14 Lake (maintenance schedule)
+
+#9 Knowledge Base ──feeds── #12 Pool how-tos
+        ├──feeds── #3 Chair history (narrative; table is its own)
+        └──feeds── #14 Lake (reference material)
+```
+
+---
+
+## Spec-writing roadmap (dependency order)
+
+The order to promote briefs into `docs/specs/*.md`. Tiers are sequential; items *within* a tier are
+independent of each other.
+
+**Tier 0 — Foundations (spec/build first):**
+1. **Operating Calendar** — no new spec needed (see `operating-calendar.md`); build it before its
+   dependents (#8, #14) are specced, or have those specs reference it.
+2. **#9 Office Knowledge Base** — the spine. Spec next.
+
+**Tier 1 — Become cheap once the foundations exist (spec after their foundation):**
+3. **#12 Pool How-tos** — KB pool-tagged entries + a video-link field.
+4. **#3 Chair / Office History** — `position_terms` table + KB narrative link.
+5. **#8 Social Events DB / Playbooks** — `events` table feeding the Operating Calendar; cross-links KB.
+6. **#14 Lake** — Operating Calendar maintenance category + KB reference material.
+
+**Tier 2 — Independent quick wins (no foundation dependency; good momentum fillers):**
+7. **#6 Property Type Counts** — pure derive over `properties`, no schema change.
+8. **#7 Budget Visualization** — largely already built; likely a presentation enhancement.
+   **Gate on Michelle's input** before specing — may not need a full spec.
+9. **#10 Templates** — add a `template` category to the documents library.
+10. **#1 Meeting RSVP + Quorum** — per-position RSVP on top of existing quorum/attendance infra.
+
+**Tier 3 — Standalone, lower urgency:**
+11. **#2 Vendor / Contract DB** — vendor master + contract expirations + dated history log.
+12. **#5 Membership Delinquency Follow-up** — dated follow-up log; needs a due-date field first.
+13. **#13 Bylaw Update Considerations** — small `bylaw_suggestions` running list.
+
+**Tier 4 — Blocked (board decision required before any spec):**
+14. **#11 Access / Codes Vault** — **do not spec until the board accepts storing live physical-access
+    codes in a web app** (vs. a paper-list pointer). Then needs RLS-to-president/officers,
+    encryption-at-rest, MFA/step-up re-auth, access logging, and rotation reminders.
+
+---
+
+## Decisions to resolve before specing
+
+One checklist to take to the board / VP / Michelle so spec-writing isn't blocked mid-stream:
+
+- [ ] **#9 KB** — edit rights: office holder + officers only, or any board member? Markdown vs. the
+      existing Tiptap `RichTextEditor` for bodies?
+- [ ] **#12 Pool** — video hosting: unlisted YouTube (free, recommended) vs. Supabase Storage
+      (counts against free-tier budget)?
+- [ ] **#3 Chair history** — capture past-holder contact info or just names? Backfill how many years?
+- [ ] **#8 Social** — single playbook body vs. fixed sub-sections? Annual events auto-appear on the
+      Operating Calendar?
+- [ ] **#14 Lake** — own top-level section vs. nested under Grounds? Distinct from "calendar category
+      + KB entries", or not?
+- [ ] **#6 Counts** — count by existing `membership_type`, or a new distinct property-type concept?
+      (Confirm categories with the VP.)
+- [ ] **#7 Budget viz** — **Michelle:** what view is actually useful? Charting lib vs. richer CSS bars?
+- [ ] **#10 Templates** — stored files only, or fill-in-the-blanks templates later?
+- [ ] **#2 Vendor DB** — standalone "Records" section vs. nested under Treasury? Who can edit
+      (officers+, or relevant chair too)?
+- [ ] **#5 Delinquency** — add a due date to fiscal year/assessment so "days past due" can be derived
+      (**Michelle**). Tie notice text to Templates (#10)?
+- [ ] **#13 Bylaws** — categorize (cost-saving / clarity / compliance) or flat list?
+- [ ] **#11 Access codes** — **BLOCKER:** does the board accept storing live codes at all? Which
+      Supabase Auth MFA mechanism (TOTP) do we use for the step-up gate?
 
 ---
 
@@ -33,15 +139,22 @@ Each brief is: **Problem / Exists today / Proposed shape / Open questions / Size
 
 ### 1. Meeting RSVP + quorum reminder
 - **Problem:** Before every meeting people ask "how many do we need for quorum?" — including the VP.
-- **Exists today:** Live attendance + quorum are tracked *at* call-to-order — `MeetingRunnerModal`
-  shows "X of Y present — quorum: N", backed by `meetings.present_positions` and the
-  `quorum_required` setting. There is no *pre*-meeting RSVP.
+- **Exists today:** Live attendance + quorum are tracked *at* call-to-order — the runner's
+  `AttendancePanel` (`components/hoa/MeetingRunner/`) shows "N voting members present — quorum: M",
+  backed by `meetings.present_positions` and the `quorum_required` setting. There is no *pre*-meeting
+  RSVP.
 - **Proposed:** A pre-meeting RSVP (yes / no / maybe per position) surfaced before the meeting
   starts, with the quorum number shown next to the running committed count ("need N — M committed
   so far"). Reuse the `pre_meeting_updates` upsert pattern, or add a small `meeting_rsvps` table
   keyed to `meeting_id + position_id`.
+- **Worth more now than when this was written:** roll call starts with *nobody* marked present, so
+  the operator taps through the board at the top of every meeting. An RSVP could pre-fill that from
+  the yes/no answers, turning a deliberate act into a confirmation. That makes this brief a genuine
+  time-saver rather than only an informational nicety.
 - **Open questions:** Show quorum number passively on the meetings list too, or only on RSVP? Do
-  chairs (non-voting) RSVP for headcount but not count toward quorum?
+  chairs (non-voting) RSVP for headcount but not count toward quorum? If RSVP pre-fills attendance,
+  does it still require confirmation before call to order (it should — an RSVP is a prediction, and
+  the minutes record who was actually in the room)?
 - **Size:** S.
 
 ### 2. Vendor / Contract Database

@@ -25,6 +25,8 @@ export interface ActionItemPanelProps {
  * during the window — backing out still fired the callback and appended a note
  * for an item the operator had just abandoned.
  *
+ * A real `<form>`, so Enter from the description creates the item.
+ *
  * @param positions - Positions the item can be assigned to
  * @param meetingId - UUID of the meeting in progress
  * @param onCreated - Called with the assignee name and title on success
@@ -42,7 +44,9 @@ export function ActionItemPanel({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const handleCreate = () => {
+  const handleCreate = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isPending) return;
     const title = description.trim();
     if (!title) {
       setError("Description is required.");
@@ -71,8 +75,11 @@ export function ActionItemPanel({
   };
 
   return (
-    <div className="flex flex-col gap-5 max-w-lg mx-auto py-6 px-4">
-      <div className="flex items-center justify-between">
+    <form
+      onSubmit={handleCreate}
+      className="mx-auto flex max-w-lg flex-col gap-5 px-4 py-6"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-semibold">Create Action Item</h2>
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
           Cancel
@@ -131,11 +138,11 @@ export function ActionItemPanel({
           </p>
         )}
 
-        <Button onClick={handleCreate} disabled={isPending}>
+        <Button type="submit" disabled={isPending}>
           {isPending && <Loader2 className="animate-spin" />}
           {isPending ? "Creating…" : "Create"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

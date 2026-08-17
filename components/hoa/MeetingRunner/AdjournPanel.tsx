@@ -23,6 +23,8 @@ export interface AdjournPanelProps {
  * The warning is advisory — a board that genuinely met without minutes can still
  * close out.
  *
+ * A real `<form>`, so Enter from either select adjourns.
+ *
  * @param presentPositions - Voting positions available to move or second
  * @param minutesLookEmpty - Whether to show the empty-minutes warning
  * @param onAdjourn        - Adjourns with the chosen pair
@@ -38,9 +40,18 @@ export function AdjournPanel({
 }: AdjournPanelProps) {
   const state = useMoverSeconder(presentPositions);
 
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!state.isComplete || isPending) return;
+    onAdjourn(state.movedBy, state.secondedBy);
+  };
+
   return (
-    <div className="flex flex-col gap-6 max-w-lg mx-auto py-8 px-4">
-      <div className="flex items-start justify-between gap-4">
+    <form
+      onSubmit={handleSubmit}
+      className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Adjourn Meeting</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -55,7 +66,7 @@ export function AdjournPanel({
       {minutesLookEmpty && (
         <p
           role="alert"
-          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
         >
           No minutes have been written for this meeting yet. Adjourning now leaves
           it in the record with no account of what happened.
@@ -72,13 +83,13 @@ export function AdjournPanel({
       </div>
 
       <Button
-        onClick={() => onAdjourn(state.movedBy, state.secondedBy)}
+        type="submit"
         disabled={!state.isComplete || isPending}
         variant="destructive"
       >
         {isPending && <Loader2 className="animate-spin" />}
         {isPending ? "Adjourning…" : "Formally Adjourn"}
       </Button>
-    </div>
+    </form>
   );
 }

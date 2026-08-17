@@ -16,6 +16,9 @@ export interface NewBusinessPanelProps {
  * Items fold into the agenda scaffold under "New Business" when the meeting is
  * called to order. Skippable — continue with zero items if there is nothing new.
  *
+ * The entry fields are a real `<form>`, so Enter adds an item. Continue sits
+ * outside it: it advances the wizard rather than adding anything.
+ *
  * @param items      - New-business items entered so far
  * @param onAdd      - Appends an item
  * @param onRemove   - Removes the item at the given index
@@ -30,21 +33,16 @@ export function NewBusinessPanel({
   const [title, setTitle] = useState("");
   const [note, setNote] = useState("");
 
-  const handleAdd = () => {
+  const handleAdd = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
     if (!title.trim()) return;
     onAdd({ title: title.trim(), note: note.trim() || null });
     setTitle("");
     setNote("");
   };
 
-  const addOnEnter = (event: React.KeyboardEvent) => {
-    if (event.key !== "Enter") return;
-    event.preventDefault();
-    handleAdd();
-  };
-
   return (
-    <div className="flex flex-col gap-6 max-w-lg mx-auto py-8 px-4">
+    <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8">
       <div>
         <h2 className="text-xl font-semibold">New Business</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -69,7 +67,7 @@ export function NewBusinessPanel({
         </ul>
       )}
 
-      <div className="space-y-3">
+      <form onSubmit={handleAdd} className="space-y-3">
         <div className="space-y-1.5">
           <label htmlFor="nb-title" className="text-sm font-medium">
             Topic
@@ -79,7 +77,6 @@ export function NewBusinessPanel({
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            onKeyDown={addOnEnter}
             placeholder="e.g. Fence vendor quote"
             className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
@@ -93,15 +90,14 @@ export function NewBusinessPanel({
             type="text"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            onKeyDown={addOnEnter}
             placeholder="e.g. review 3 bids"
             className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
           />
         </div>
-        <Button variant="outline" size="sm" onClick={handleAdd} disabled={!title.trim()}>
+        <Button type="submit" variant="outline" size="sm" disabled={!title.trim()}>
           Add item
         </Button>
-      </div>
+      </form>
 
       <div className="flex justify-end">
         <Button onClick={onContinue}>

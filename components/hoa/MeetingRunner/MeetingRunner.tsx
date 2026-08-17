@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import type { Editor } from "@tiptap/react";
 import { RichTextEditor } from "@/components/hoa/RichTextEditor";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   adjournMeeting,
   callToOrder,
@@ -24,6 +25,7 @@ import { ExportPanel } from "./ExportPanel";
 import { NewBusinessPanel } from "./NewBusinessPanel";
 import { TopBar } from "./TopBar";
 import { VotePanel } from "./VotePanel";
+import { resolveDismiss } from "./dismiss";
 import { useAutosave } from "./useAutosave";
 import { useElapsedTimer } from "./useElapsedTimer";
 import { PRE_START_VIEWS, type Position, type RunnerView } from "./types";
@@ -60,6 +62,11 @@ export interface MeetingRunnerProps {
  * meeting be adjourned until the saved state has loaded — adjourning against an
  * unloaded editor used to overwrite the minutes with an empty string.
  *
+ * The surface is a Base UI `Dialog`, which supplies the focus trap, the inert
+ * treatment of everything behind it, the body scroll lock, and focus restore on
+ * close — none of which the hand-rolled fixed-position container had. Its one
+ * dangerous default, closing on Escape, is intercepted: see `resolveDismiss`.
+ *
  * @param props - Positions, the meeting identity, quorum threshold, and onClose
  */
 export function MeetingRunner({
@@ -82,6 +89,7 @@ export function MeetingRunner({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDismissHint, setShowDismissHint] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const editorRef = useRef<Editor | null>(null);
@@ -97,6 +105,12 @@ export function MeetingRunner({
       return [];
     }
   });
+
+  /** Switches panel and clears any leftover "Escape won't do that" hint. */
+  const goToView = (next: RunnerView) => {
+    setShowDismissHint(false);
+    setView(next);
+  };
 
   const persistMinutes = useCallback(
     (html: string) => saveMeetingMinutes(meetingId, html),
@@ -193,7 +207,7 @@ export function MeetingRunner({
           // Storage unavailable; nothing to clean up.
         }
         setStartedAt(new Date().toISOString());
-        setView("running");
+        goToView("running");
       } catch (err) {
         setActionError(err instanceof Error ? err.message : "Failed to start meeting.");
       }
@@ -222,12 +236,12 @@ export function MeetingRunner({
 
   const handleVoteRecorded = (resultText: string) => {
     insertParagraph(resultText);
-    setView("running");
+    goToView("running");
   };
 
   const handleActionItemCreated = (assigneeName: string, title: string) => {
     insertParagraph(`Action item assigned to ${assigneeName}: ${title}`);
-    setView("running");
+    goToView("running");
   };
 
   const handleAdjourn = (movedBy: string, secondedBy: string) => {
@@ -238,7 +252,7 @@ export function MeetingRunner({
         // than to close a meeting whose record was never saved.
         await saveNow();
         const { uploadError } = await adjournMeeting(meetingId, movedBy, secondedBy);
-        setView("export");
+        goToView("export");
         if (uploadError) {
           setActionError(`Meeting adjourned, but the document upload failed: ${uploadError}`);
         }
@@ -260,150 +274,184 @@ export function MeetingRunner({
     });
   };
 
+  /**
+   * Handles Escape and outside presses, which Base UI would otherwise treat as
+   * "close". Mid-meeting that would tear down the runner on one keystroke, and
+   * `beforeunload` does not fire for it, so the guard that protects a reload
+   * would not protect this.
+   */
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) return;
+    const outcome = resolveDismiss(view);
+    if (outcome === "close") onClose();
+    else if (outcome === "dismissPanel") goToView("running");
+    else setShowDismissHint(true);
+  };
+
   const presentVotingPositions = votingPositions.filter((p) => presentIds.has(p.id));
   const isPreStart = PRE_START_VIEWS.includes(view);
   const banner = actionError ?? loadError ?? saveError;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Meeting runner for ${meetingDate}`}
-      className="fixed inset-0 z-50 flex flex-col bg-background"
+    <Dialog
+      open
+      onOpenChange={handleOpenChange}
+      // Nothing outside this surface is reachable anyway, and Base UI would
+      // otherwise also close on focus-out — another way to lose a meeting to a
+      // stray click. Escape stays the only dismissal, and it is governed above.
+      disablePointerDismissal
     >
-      <TopBar
-        meetingDate={meetingDate}
-        elapsed={elapsed}
-        view={view}
-        saveStatus={saveStatus}
-        lastSavedAt={lastSavedAt}
-        onCallVote={() => setView("voting")}
-        onCreateActionItem={() => setView("actionItem")}
-        onAdjourn={() => setView("adjourn")}
-        onDeleteMeeting={() => setShowDeleteConfirm(true)}
-        onExit={onClose}
-      />
+      <DialogContent
+        showCloseButton={false}
+        aria-label={`Meeting runner for ${meetingDate}`}
+        // Overrides the primitive's small centred card: this surface is
+        // full-bleed. `inset-0` supersedes its top/left, and the translate,
+        // radius, padding, ring, and max-width all have to be unwound.
+        className="inset-0 flex h-dvh w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none bg-background p-0 text-base text-foreground ring-0 sm:max-w-none"
+      >
+        <TopBar
+          meetingDate={meetingDate}
+          elapsed={elapsed}
+          view={view}
+          saveStatus={saveStatus}
+          lastSavedAt={lastSavedAt}
+          onCallVote={() => goToView("voting")}
+          onCreateActionItem={() => goToView("actionItem")}
+          onAdjourn={() => goToView("adjourn")}
+          onDeleteMeeting={() => setShowDeleteConfirm(true)}
+          onExit={onClose}
+        />
 
-      {showDeleteConfirm && (
-        <div className="px-4 pt-3 shrink-0">
-          <DeleteMeetingConfirm
-            onConfirm={handleDeleteMeeting}
-            onDismiss={() => setShowDeleteConfirm(false)}
-            isPending={isPending}
-          />
-        </div>
-      )}
-
-      {banner && (
-        <div className="px-4 pt-3 shrink-0">
-          <p role="alert" className="text-xs text-destructive">
-            {banner}
-          </p>
-        </div>
-      )}
-
-      <div className="relative flex-1 overflow-y-auto">
-        {isPreStart ? (
-          <>
-            {view === "newBusiness" && (
-              <NewBusinessPanel
-                items={newBusiness}
-                onAdd={(item) => persistNewBusiness([...newBusiness, item])}
-                onRemove={(index) =>
-                  persistNewBusiness(newBusiness.filter((_, i) => i !== index))
-                }
-                onContinue={() => setView("attendance")}
-              />
-            )}
-
-            {view === "attendance" && (
-              <AttendancePanel
-                positions={positions}
-                presentIds={presentIds}
-                quorumRequired={quorumRequired}
-                onToggle={togglePresent}
-                onMarkAllPresent={markAllPresent}
-                onProceed={() => setView("callToOrder")}
-                isPending={isPending}
-              />
-            )}
-
-            {view === "callToOrder" && (
-              <CallToOrderPanel
-                presentPositions={presentVotingPositions}
-                onConfirm={handleCallToOrder}
-                onBack={() => setView("attendance")}
-                isPending={isPending}
-              />
-            )}
-          </>
-        ) : !hasLoadedState ? (
-          <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-            {!loadError && <Loader2 className="size-4 animate-spin" />}
-            {loadError ? "Reload the page to try again." : "Loading this meeting…"}
+        {showDeleteConfirm && (
+          <div className="px-4 pt-3 shrink-0">
+            <DeleteMeetingConfirm
+              onConfirm={handleDeleteMeeting}
+              onDismiss={() => setShowDeleteConfirm(false)}
+              isPending={isPending}
+            />
           </div>
-        ) : (
-          <>
-            {/* Stays mounted for the rest of the meeting — see the note above. */}
-            <div className="p-4 h-full flex flex-col gap-3">
-              <p className="text-sm text-muted-foreground">
-                Meeting in progress — use the buttons above to call votes, assign
-                action items, or adjourn.
-              </p>
-              <div className="flex-1">
-                <RichTextEditor
-                  initialContent={minutesContent}
-                  onChange={setMinutesContent}
-                  onReady={(editor) => {
-                    editorRef.current = editor;
-                  }}
-                />
-              </div>
-            </div>
-
-            {view !== "running" && (
-              <div className="absolute inset-0 overflow-y-auto bg-background">
-                {view === "voting" && (
-                  <VotePanel
-                    votingPositions={votingPositions}
-                    presentIds={presentIds}
-                    meetingId={meetingId}
-                    onVoteRecorded={handleVoteRecorded}
-                    onCancel={() => setView("running")}
-                  />
-                )}
-
-                {view === "actionItem" && (
-                  <ActionItemPanel
-                    positions={positions}
-                    meetingId={meetingId}
-                    onCreated={handleActionItemCreated}
-                    onCancel={() => setView("running")}
-                  />
-                )}
-
-                {view === "adjourn" && (
-                  <AdjournPanel
-                    presentPositions={presentVotingPositions}
-                    minutesLookEmpty={!hasMinutesContent(minutesContent)}
-                    onAdjourn={handleAdjourn}
-                    onCancel={() => setView("running")}
-                    isPending={isPending}
-                  />
-                )}
-
-                {view === "export" && (
-                  <ExportPanel
-                    meetingId={meetingId}
-                    meetingDate={meetingDate}
-                    onClose={onClose}
-                  />
-                )}
-              </div>
-            )}
-          </>
         )}
-      </div>
-    </div>
+
+        {showDismissHint && (
+          <div className="shrink-0 px-4 pt-3">
+            <p role="status" className="text-xs text-muted-foreground">
+              The meeting is still running — Escape will not leave it. Use Close
+              in the top bar when you are done.
+            </p>
+          </div>
+        )}
+
+        {banner && (
+          <div className="px-4 pt-3 shrink-0">
+            <p role="alert" className="text-xs text-destructive">
+              {banner}
+            </p>
+          </div>
+        )}
+
+        <div className="relative flex-1 overflow-y-auto">
+          {isPreStart ? (
+            <>
+              {view === "newBusiness" && (
+                <NewBusinessPanel
+                  items={newBusiness}
+                  onAdd={(item) => persistNewBusiness([...newBusiness, item])}
+                  onRemove={(index) =>
+                    persistNewBusiness(newBusiness.filter((_, i) => i !== index))
+                  }
+                  onContinue={() => goToView("attendance")}
+                />
+              )}
+
+              {view === "attendance" && (
+                <AttendancePanel
+                  positions={positions}
+                  presentIds={presentIds}
+                  quorumRequired={quorumRequired}
+                  onToggle={togglePresent}
+                  onMarkAllPresent={markAllPresent}
+                  onProceed={() => goToView("callToOrder")}
+                  isPending={isPending}
+                />
+              )}
+
+              {view === "callToOrder" && (
+                <CallToOrderPanel
+                  presentPositions={presentVotingPositions}
+                  onConfirm={handleCallToOrder}
+                  onBack={() => goToView("attendance")}
+                  isPending={isPending}
+                />
+              )}
+            </>
+          ) : !hasLoadedState ? (
+            <div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
+              {!loadError && <Loader2 className="size-4 animate-spin" />}
+              {loadError ? "Reload the page to try again." : "Loading this meeting…"}
+            </div>
+          ) : (
+            <>
+              {/* Stays mounted for the rest of the meeting — see the note above. */}
+              <div className="flex h-full flex-col gap-3 p-3 sm:p-4">
+                <p className="text-sm text-muted-foreground">
+                  Meeting in progress — use the buttons above to call votes, assign
+                  action items, or adjourn.
+                </p>
+                <div className="flex-1">
+                  <RichTextEditor
+                    initialContent={minutesContent}
+                    onChange={setMinutesContent}
+                    onReady={(editor) => {
+                      editorRef.current = editor;
+                    }}
+                  />
+                </div>
+              </div>
+
+              {view !== "running" && (
+                <div className="absolute inset-0 overflow-y-auto bg-background">
+                  {view === "voting" && (
+                    <VotePanel
+                      votingPositions={votingPositions}
+                      presentIds={presentIds}
+                      meetingId={meetingId}
+                      onVoteRecorded={handleVoteRecorded}
+                      onCancel={() => goToView("running")}
+                    />
+                  )}
+
+                  {view === "actionItem" && (
+                    <ActionItemPanel
+                      positions={positions}
+                      meetingId={meetingId}
+                      onCreated={handleActionItemCreated}
+                      onCancel={() => goToView("running")}
+                    />
+                  )}
+
+                  {view === "adjourn" && (
+                    <AdjournPanel
+                      presentPositions={presentVotingPositions}
+                      minutesLookEmpty={!hasMinutesContent(minutesContent)}
+                      onAdjourn={handleAdjourn}
+                      onCancel={() => goToView("running")}
+                      isPending={isPending}
+                    />
+                  )}
+
+                  {view === "export" && (
+                    <ExportPanel
+                      meetingId={meetingId}
+                      meetingDate={meetingDate}
+                      onClose={onClose}
+                    />
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

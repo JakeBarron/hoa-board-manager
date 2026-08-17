@@ -127,6 +127,26 @@ describe("VotePanel", () => {
     );
   });
 
+  it("records the vote on Enter from the motion title", async () => {
+    const { recordMotion } = jest.requireMock("@/actions/motions");
+    renderPanel();
+
+    await userEvent.click(screen.getByRole("button", { name: "Mark all Yay" }));
+    await userEvent.type(screen.getByLabelText(/Motion title/), "Approve the budget{Enter}");
+
+    await waitFor(() => expect(recordMotion).toHaveBeenCalled());
+  });
+
+  it("ignores Enter while any present member's vote is unset", async () => {
+    const { recordMotion } = jest.requireMock("@/actions/motions");
+    renderPanel();
+
+    // Same gate as the disabled button — Enter must not slip past it.
+    await userEvent.type(screen.getByLabelText(/Motion title/), "Approve the budget{Enter}");
+
+    expect(recordMotion).not.toHaveBeenCalled();
+  });
+
   it("surfaces a failure instead of pretending the vote was recorded", async () => {
     const { recordMotion } = jest.requireMock("@/actions/motions");
     recordMotion.mockRejectedValueOnce(new Error("new row violates row-level security policy"));

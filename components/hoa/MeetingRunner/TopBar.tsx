@@ -96,8 +96,8 @@ export function TopBar({
   const hasAdjourned = view === "export";
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border bg-background shrink-0">
-      <div className="flex items-center gap-4">
+    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-3 py-3 sm:px-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
         <span className="text-sm font-semibold">{formatMeetingDate(meetingDate)}</span>
         <span className="font-mono text-sm text-muted-foreground tabular-nums">{elapsed}</span>
         <SaveIndicator status={saveStatus} lastSavedAt={lastSavedAt} />

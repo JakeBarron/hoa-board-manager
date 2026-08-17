@@ -18,12 +18,18 @@ const VOTE_CHOICES: ReadonlyArray<{ value: VoteChoice; label: string }> = [
   { value: "absent", label: "Absent" },
 ];
 
-/** Tailwind classes for the selected state of each choice. */
+/**
+ * Tailwind classes for the selected state of each choice. Each keeps its hue in
+ * dark mode but lightens the fill and darkens the text, so a chosen vote stays
+ * legible against a dark surface.
+ */
 const SELECTED_STYLE: Record<VoteChoice, string> = {
-  yay: "bg-green-600 text-white border-green-600",
-  nay: "bg-red-600 text-white border-red-600",
-  no_vote: "bg-amber-500 text-white border-amber-500",
-  absent: "bg-slate-600 text-white border-slate-600",
+  yay: "bg-green-600 text-white border-green-600 dark:bg-green-500 dark:border-green-500 dark:text-green-950",
+  nay: "bg-red-600 text-white border-red-600 dark:bg-red-500 dark:border-red-500 dark:text-red-950",
+  no_vote:
+    "bg-amber-500 text-white border-amber-500 dark:bg-amber-400 dark:border-amber-400 dark:text-amber-950",
+  absent:
+    "bg-slate-600 text-white border-slate-600 dark:bg-slate-400 dark:border-slate-400 dark:text-slate-950",
 };
 
 export interface VotePanelProps {
@@ -48,6 +54,10 @@ export interface VotePanelProps {
  *
  * Persistence is a single `recordMotion` call. The tally it returns is what goes
  * into the minutes, so the sentence and the `motion_votes` rows cannot disagree.
+ *
+ * The panel is a real `<form>`, so Enter from the motion title records the vote
+ * once the slate is complete. It was mouse-only before, in the middle of a
+ * meeting being typed at speed.
  *
  * @param votingPositions - Every voting seat
  * @param presentIds      - Ids marked present at roll call
@@ -95,8 +105,11 @@ export function VotePanel({
   const nameOf = (p: Position) =>
     formatPersonName(p.name as PositionName, p.display_name);
 
-  const handleSubmit = () => {
-    if (!canSubmit) return;
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    // Enter can reach here while the slate is incomplete; the same gate the
+    // submit button uses applies.
+    if (!canSubmit || isPending) return;
     setError(null);
 
     startTransition(async () => {
@@ -138,8 +151,11 @@ export function VotePanel({
   };
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl mx-auto py-6 px-4">
-      <div className="flex items-center justify-between">
+    <form
+      onSubmit={handleSubmit}
+      className="mx-auto flex max-w-2xl flex-col gap-5 px-4 py-6"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-semibold">Call a Vote</h2>
         <Button variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
           Cancel
@@ -174,7 +190,7 @@ export function VotePanel({
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <MoverSeconderFields
             idPrefix="motion"
             moverLabel="Proposed by"
@@ -195,7 +211,10 @@ export function VotePanel({
               const current = votes[p.id] ?? null;
               const isPresent = presentIds.has(p.id);
               return (
-                <div key={p.id} className="flex items-center justify-between px-4 py-2.5">
+                <div
+                  key={p.id}
+                  className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2.5 sm:px-4"
+                >
                   <span
                     className={`text-sm font-medium ${
                       isPresent ? "" : "text-muted-foreground"
@@ -203,7 +222,7 @@ export function VotePanel({
                   >
                     {nameOf(p)}
                   </span>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1">
                     {VOTE_CHOICES.map(({ value, label }) => (
                       <button
                         key={value}
@@ -240,10 +259,10 @@ export function VotePanel({
         </p>
       )}
 
-      <Button onClick={handleSubmit} disabled={!canSubmit || isPending}>
+      <Button type="submit" disabled={!canSubmit || isPending}>
         {isPending && <Loader2 className="animate-spin" />}
         {isPending ? "Recording…" : "Record Vote"}
       </Button>
-    </div>
+    </form>
   );
 }

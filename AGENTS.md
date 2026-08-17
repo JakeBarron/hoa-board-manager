@@ -173,7 +173,10 @@ components/
                      it, so recorded text is inserted at the cursor via Tiptap `insertContentAt`
                      instead of being appended to the document tail behind a remount. Minutes autosave
                      on a debounce (`useAutosave`); on resume, Adjourn stays disabled until saved state
-                     loads so an empty document can never overwrite real minutes
+                     loads so an empty document can never overwrite real minutes. The shell is a Base UI
+                     `Dialog` (focus trap, scroll lock, focus restore) whose `onOpenChange` is intercepted
+                     by `resolveDismiss` — **Escape must never close a running meeting**, since
+                     `beforeunload` does not fire for it. Every panel is a real `<form>` so Enter submits
     SettingRow           — generic editable setting row with inline save feedback (client)
     MeetingCadenceRow    — week-of-month + day-of-week dropdowns for meeting cadence (client)
     PositionEditRow      — inline edit of position display name + email; updates auth user (client)

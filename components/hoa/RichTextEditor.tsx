@@ -1,6 +1,7 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEffect } from "react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +12,13 @@ interface RichTextEditorProps {
   onChange?: (html: string) => void;
   /** When false, renders read-only prose (no toolbar) */
   editable?: boolean;
+  /**
+   * Receives the Tiptap instance once it exists, and `null` on teardown.
+   * Lets a caller insert content at the cursor rather than rebuilding the HTML
+   * string and remounting the editor — a remount discards undo history,
+   * selection, and scroll position.
+   */
+  onReady?: (editor: Editor | null) => void;
 }
 
 /**
@@ -21,11 +29,13 @@ interface RichTextEditorProps {
  * @param initialContent - HTML string to pre-populate the editor
  * @param onChange       - Callback fired on every content change
  * @param editable       - Whether the editor is interactive (default true)
+ * @param onReady        - Receives the Tiptap instance for imperative edits
  */
 export function RichTextEditor({
   initialContent = "",
   onChange,
   editable = true,
+  onReady,
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [StarterKit],
@@ -42,6 +52,14 @@ export function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    onReady?.(editor);
+    return () => onReady?.(null);
+    // onReady is intentionally excluded: callers pass an inline callback, and
+    // depending on it would re-run this on every parent render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]);
 
   if (!editor) return null;
 

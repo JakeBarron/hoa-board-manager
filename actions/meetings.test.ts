@@ -226,9 +226,9 @@ describe("callToOrder (earliest-first guard)", () => {
     return buildChain({ maybeSingle: jest.fn().mockResolvedValue({ data: row, error }) });
   }
 
-  /** Chain for the update query (terminal `.eq`). */
-  function updateChain(error: unknown = null) {
-    return buildChain({ eq: jest.fn().mockResolvedValue({ error }) });
+  /** Chain for the update query (terminal `.select`). */
+  function updateChain(rows: { id: string }[] | null, error: unknown = null) {
+    return buildChain({ select: jest.fn().mockResolvedValue({ data: rows, error }) });
   }
 
   it("throws when an earlier pending meeting exists", async () => {
@@ -241,10 +241,36 @@ describe("callToOrder (earliest-first guard)", () => {
     await expect(callToOrder("meeting-1", "a", "b", ["a"])).rejects.toThrow("Another meeting is already in progress");
   });
 
+  it("refuses to call the same meeting to order twice", async () => {
+    // The meeting already underway is still the earliest one, so the queue check
+    // alone lets it through — and starting it again would reset started_at and
+    // overwrite the attendance recorded the first time.
+    mockFrom.mockReturnValue(earliestChain({ id: "meeting-1", status: "in_progress" }));
+    await expect(callToOrder("meeting-1", "a", "b", ["a"])).rejects.toThrow(
+      "already in progress"
+    );
+  });
+
+  it("does not write attendance when it refuses a re-entry", async () => {
+    const earliest = earliestChain({ id: "meeting-1", status: "in_progress" });
+    mockFrom.mockReturnValue(earliest);
+    await expect(callToOrder("meeting-1", "a", "b", ["a"])).rejects.toThrow();
+    expect(earliest.update).not.toHaveBeenCalled();
+  });
+
+  it("throws when the meeting stopped being pending before the write landed", async () => {
+    mockFrom
+      .mockReturnValueOnce(earliestChain({ id: "meeting-1", status: "pending" }))
+      .mockReturnValueOnce(updateChain([]));
+    await expect(callToOrder("meeting-1", "a", "b", ["a", "b"])).rejects.toThrow(
+      "no longer pending"
+    );
+  });
+
   it("starts the meeting when it is the earliest scheduled", async () => {
     mockFrom
       .mockReturnValueOnce(earliestChain({ id: "meeting-1", status: "pending" }))
-      .mockReturnValueOnce(updateChain(null));
+      .mockReturnValueOnce(updateChain([{ id: "meeting-1" }]));
     await expect(callToOrder("meeting-1", "a", "b", ["a", "b"])).resolves.toBeUndefined();
     expect(revalidatePath).toHaveBeenCalledWith("/meetings");
     expect(revalidatePath).toHaveBeenCalledWith("/dashboard");

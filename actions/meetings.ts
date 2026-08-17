@@ -66,7 +66,9 @@ export async function createMeeting(
  * Calls the meeting to order: records proposer/seconder, sets started_at to
  * now, moves status to in_progress, and saves the initial attendance list.
  * Enforces the queue invariant — the earliest scheduled meeting must be started
- * first, and only one meeting may be in progress at a time.
+ * first, and only one meeting may be in progress at a time. Rejects a meeting
+ * that is already in progress: calling it to order twice would reset the elapsed
+ * timer and overwrite the attendance recorded the first time.
  *
  * @param meetingId          - UUID of the meeting to call to order
  * @param calledBy           - Position ID of the member calling the meeting to order
@@ -100,9 +102,16 @@ export async function callToOrder(
         : "An earlier meeting must be started first"
     );
   }
+  // This meeting being the earliest is not enough: an already-started meeting is
+  // still the earliest one, so without this it could be called to order twice —
+  // resetting started_at and overwriting recorded attendance with whatever the
+  // wizard happened to have selected.
+  if (earliest?.status === "in_progress") {
+    throw new Error("This meeting is already in progress — resume it instead");
+  }
 
   const now = new Date().toISOString();
-  const { error } = await supabase
+  const { data: started, error } = await supabase
     .from("meetings")
     .update({
       called_by: calledBy,
@@ -112,9 +121,15 @@ export async function callToOrder(
       status: "in_progress" satisfies MeetingStatus,
       present_positions: presentPositionIds,
     })
-    .eq("id", meetingId);
+    .eq("id", meetingId)
+    // Re-assert pending so two operators racing the wizard cannot both start it.
+    .eq("status", "pending" satisfies MeetingStatus)
+    .select("id");
 
   if (error) throw new Error(error.message);
+  if (!started || started.length === 0) {
+    throw new Error("This meeting is no longer pending — reload and try again");
+  }
   revalidatePath("/meetings");
   revalidatePath("/dashboard");
 }

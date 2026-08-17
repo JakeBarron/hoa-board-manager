@@ -6,9 +6,21 @@ jest.mock("@/actions/meetings", () => ({
   createMeeting: jest.fn().mockResolvedValue({ id: "new-meeting" }),
 }));
 
+/**
+ * A date comfortably in the future. The modal disables Schedule for any date
+ * before today, so a hardcoded literal here silently turns the submit tests into
+ * no-ops the moment it passes — which is exactly what happened to the original
+ * "2026-08-12".
+ */
+const futureDate = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  return d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+})();
+
 const baseProps = {
   positionId: "pos-1",
-  defaultDate: "2026-08-12",
+  defaultDate: futureDate,
   onClose: jest.fn(),
 };
 
@@ -17,7 +29,7 @@ describe("ScheduleMeetingModal", () => {
 
   it("renders with the date input pre-filled to defaultDate", () => {
     render(<ScheduleMeetingModal {...baseProps} />);
-    expect(screen.getByDisplayValue("2026-08-12")).toBeInTheDocument();
+    expect(screen.getByDisplayValue(futureDate)).toBeInTheDocument();
   });
 
   it("renders Schedule and Cancel buttons", () => {
@@ -35,7 +47,7 @@ describe("ScheduleMeetingModal", () => {
     const { createMeeting } = jest.requireMock("@/actions/meetings");
     render(<ScheduleMeetingModal {...baseProps} />);
     await userEvent.click(screen.getByRole("button", { name: "Schedule" }));
-    expect(createMeeting).toHaveBeenCalledWith("pos-1", "2026-08-12");
+    expect(createMeeting).toHaveBeenCalledWith("pos-1", futureDate);
   });
 
   it("calls onClose after successful submit", async () => {

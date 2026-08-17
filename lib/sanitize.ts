@@ -33,13 +33,16 @@ const ALLOWED_TAGS = [
  * **Server-only** — depends on `sanitize-html`, which is a Node module. Import
  * this from Server Components and Route Handlers, never from a Client Component.
  *
- * This is required, not defensive polish. `minutes_content` is not trustworthy:
- * the `meetings` RLS policies are `meetings_insert WITH CHECK (true)` and
- * `meetings_update USING (called_by = current_position().id OR is_president())`,
- * so *any* of the 13 authenticated positions — committee chairs included — can
- * insert a meeting naming themselves as `called_by` and then PATCH arbitrary
- * HTML into its `minutes_content` straight through the REST API, bypassing the
- * Tiptap editor entirely. Rendering that unsanitized into a Server Component
+ * This is required, not defensive polish. `minutes_content` is not trustworthy.
+ * `meetings` carries `meetings_insert WITH CHECK (true)` and, since
+ * `0023_meeting_runner_write_rls.sql`,
+ * `meetings_update USING (called_by = current_position().id OR is_officer_or_above())`.
+ * There is no column-level RLS, so that update covers `minutes_content` itself.
+ * The upshot: officers can rewrite any meeting outright, and *any* of the 13
+ * authenticated positions — committee chairs included — can insert a meeting
+ * naming themselves as `called_by` and then PATCH arbitrary HTML into its
+ * `minutes_content` straight through the REST API, bypassing the Tiptap editor
+ * entirely. Rendering that unsanitized into a Server Component
  * puts attacker-controlled markup in the initial SSR stream, where a literal
  * `<script>` executes on first paint. The app sets no CSP.
  *

@@ -1,4 +1,4 @@
-import type { PositionName } from "@/types/database";
+import type { PositionName, VoteChoice } from "@/types/database";
 import { formatMeetingDate } from "@/lib/dates";
 
 /**
@@ -155,4 +155,74 @@ export function buildMeetingScaffold(input: MeetingScaffoldInput): string {
   const adjournment = `<h2>Adjournment</h2><p></p>`;
 
   return [callToOrder, approval, board, committee, newBusinessSection, adjournment].join("");
+}
+
+/** One member's recorded vote, with a display name already formatted. */
+export interface NamedVote {
+  name: string;
+  vote: VoteChoice;
+}
+
+/** A motion's outcome as tallied by the server from the persisted votes. */
+export interface VoteTally {
+  yay: number;
+  nay: number;
+  abstain: number;
+  absent: number;
+  passed: boolean;
+}
+
+export interface VoteResultTextInput {
+  /** Motion title, already trimmed. */
+  title: string;
+  /** Pre-formatted name of the proposer, e.g. "President Jake Barron". */
+  callerName: string;
+  /** Pre-formatted name of the seconder. */
+  seconderName: string;
+  /** Authoritative counts, from `recordMotion`. */
+  tally: VoteTally;
+  /** Every recorded vote, used only to name who dissented, abstained, or was absent. */
+  votes: NamedVote[];
+  /** Optional detail appended after the title. */
+  description?: string | null;
+}
+
+/**
+ * Builds the sentence describing a motion's outcome for insertion into the
+ * minutes.
+ *
+ * The counts come from the server's tally rather than being recomputed here, so
+ * the prose in the minutes can never disagree with the `motion_votes` rows. The
+ * tally is rendered explicitly as yay–nay–abstain because abstentions are a
+ * distinct outcome from absences: an earlier three-bucket version dropped them
+ * entirely, rendering a 3–1 vote with two abstentions as "Passed 3–1–0".
+ *
+ * Pure — all names must be pre-formatted by the caller via `formatPersonName`.
+ *
+ * @param input - Motion text, participants, the server tally, and the vote list
+ * @returns A single plain-text sentence (no markup)
+ */
+export function buildVoteResultText(input: VoteResultTextInput): string {
+  const { title, callerName, seconderName, tally, votes, description } = input;
+
+  const namesVoting = (choice: VoteChoice): string[] =>
+    votes.filter((v) => v.vote === choice).map((v) => v.name);
+
+  const clauses: string[] = [];
+  const nays = namesVoting("nay");
+  const abstained = namesVoting("no_vote");
+  const away = namesVoting("absent");
+
+  if (nays.length > 0) clauses.push(`Nay: ${nays.join(", ")}.`);
+  if (abstained.length > 0) clauses.push(`Abstained: ${abstained.join(", ")}.`);
+  if (away.length > 0) clauses.push(`Absent: ${away.join(", ")}.`);
+
+  const narrative = clauses.length > 0 ? clauses.join(" ") : "Unanimous.";
+  const titlePart = description ? `${title}: ${description}` : title;
+  const outcome = tally.passed ? "Passed" : "Failed";
+
+  return (
+    `Motion to ${titlePart} — called by ${callerName}, seconded by ${seconderName}. ` +
+    `${outcome} ${tally.yay}–${tally.nay}–${tally.abstain} (yay–nay–abstain). ${narrative}`
+  );
 }

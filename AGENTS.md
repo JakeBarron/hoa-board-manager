@@ -146,7 +146,9 @@ actions/
   settings.ts      — updateSetting (president only)
   todos.ts         — addTodo, toggleTodo, deleteTodo, createActionItem
   documents.ts     — saveDocument, deleteDocument
-  motions.ts       — createMotion, secondMotion, recordVotes, closeMotion
+  motions.ts       — recordMotion (atomic: creates the motion already seconded, upserts votes with
+                     ON CONFLICT DO NOTHING, tallies server-side from the stored rows, then closes).
+                     Requires canEditAll — the runner records on the whole board's behalf
   positions.ts     — updatePosition (president only; updates auth user + sends reset)
   treasury.ts      — createFiscalYear, importBudget, approveBudget, saveActuals,
                      initializeAssessments, updateAssessmentPayment
@@ -166,7 +168,12 @@ components/
     PreMeetingForm       — date quick-select + textarea, upserts on submit; accepts returnPath prop for date-change navigation (client)
     VoteForm             — inline collapsed/expanded vote form for president (client)
     ScheduleMeetingModal — modal to schedule / reschedule a meeting (client)
-    MeetingRunnerModal   — secretary-controlled meeting runner: motions, voting, live minutes (client)
+    MeetingRunner/       — officer-run meeting runner, one file per panel (client). The minutes editor
+                     stays mounted once the meeting starts and vote/action-item/adjourn panels overlay
+                     it, so recorded text is inserted at the cursor via Tiptap `insertContentAt`
+                     instead of being appended to the document tail behind a remount. Minutes autosave
+                     on a debounce (`useAutosave`); on resume, Adjourn stays disabled until saved state
+                     loads so an empty document can never overwrite real minutes
     SettingRow           — generic editable setting row with inline save feedback (client)
     MeetingCadenceRow    — week-of-month + day-of-week dropdowns for meeting cadence (client)
     PositionEditRow      — inline edit of position display name + email; updates auth user (client)
@@ -192,7 +199,7 @@ lib/
   reminder.ts      — buildReminderMailto (pure; pre-filled mailto: URL for missing submissions)
   money.ts         — parseDollarsToCents / formatCents (integer-cents money; shared by treasury + CRA)
   minutes.ts       — hasMinutesContent (pure; strips tags/&nbsp; so Tiptap's empty `<p></p>` reads as blank) + toMinutesArchiveRows
-  sanitize.ts      — sanitizeMinutesHtml; **server-only**. Run stored HTML through this before ANY dangerouslySetInnerHTML — `meetings` RLS is `insert WITH CHECK (true)` + `update USING (called_by = self OR is_president())`, so any of the 13 positions can PATCH arbitrary HTML into `minutes_content` via the REST API without touching Tiptap
+  sanitize.ts      — sanitizeMinutesHtml; **server-only**. Run stored HTML through this before ANY dangerouslySetInnerHTML — `meetings` RLS is `insert WITH CHECK (true)` + `update USING (called_by = self OR is_officer_or_above())` (0023). Postgres has no column-level RLS, so that covers `minutes_content`: officers can rewrite any meeting, and any of the 13 positions can insert a meeting naming themselves `called_by` then PATCH arbitrary HTML into it via the REST API without touching Tiptap
   phone.ts         — formatPhone ("(770) 555-1234") / isValidPhone (10-digit US, optional leading 1); use for ALL phone inputs — format on display + blur, validate-if-present on submit
   cra/
     projects.ts    — pure CRA helpers: OPEN_STATUSES, REQUIRED_QUOTES, isOpenStatus, compareProjects, quoteReadiness, sumEstimated, sumActual

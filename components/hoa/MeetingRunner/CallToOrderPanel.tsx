@@ -16,6 +16,8 @@ export interface CallToOrderPanelProps {
 /**
  * Collects who called the meeting to order and who seconded, then starts it.
  *
+ * A real `<form>`, so Enter from either select starts the meeting.
+ *
  * @param presentPositions - Voting positions available to move or second
  * @param onConfirm        - Starts the meeting with the chosen pair
  * @param onBack           - Returns to attendance
@@ -29,8 +31,17 @@ export function CallToOrderPanel({
 }: CallToOrderPanelProps) {
   const state = useMoverSeconder(presentPositions);
 
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!state.isComplete || isPending) return;
+    onConfirm(state.movedBy, state.secondedBy);
+  };
+
   return (
-    <div className="flex flex-col gap-6 max-w-lg mx-auto py-8 px-4">
+    <form
+      onSubmit={handleSubmit}
+      className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8"
+    >
       <div>
         <h2 className="text-xl font-semibold">Call to Order</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -47,18 +58,15 @@ export function CallToOrderPanel({
         />
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button variant="ghost" onClick={onBack} disabled={isPending}>
           Back
         </Button>
-        <Button
-          onClick={() => onConfirm(state.movedBy, state.secondedBy)}
-          disabled={!state.isComplete || isPending}
-        >
+        <Button type="submit" disabled={!state.isComplete || isPending}>
           {isPending && <Loader2 className="animate-spin" />}
           {isPending ? "Starting…" : "Start Meeting"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 }

@@ -50,8 +50,8 @@ export function AttendancePanel({
   const quorumMet = votingPresent >= quorumRequired;
 
   return (
-    <div className="flex flex-col gap-6 max-w-lg mx-auto py-8 px-4">
-      <div className="flex items-start justify-between gap-4">
+    <div className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Attendance</h2>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -72,18 +72,20 @@ export function AttendancePanel({
               type="button"
               aria-pressed={present}
               onClick={() => onToggle(p.id)}
-              className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-colors cursor-pointer ${
-                present ? "bg-green-50 text-green-900" : "bg-background text-muted-foreground"
+              className={`flex w-full cursor-pointer flex-wrap items-center justify-between gap-x-3 gap-y-1 px-3 py-3 text-sm transition-colors sm:px-4 ${
+                present
+                  ? "bg-green-50 text-green-900 dark:bg-green-950/40 dark:text-green-100"
+                  : "bg-background text-muted-foreground"
               }`}
             >
               <span className="font-medium">
                 {formatPersonName(p.name as PositionName, p.display_name)}
               </span>
               <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+                className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${
                   present
-                    ? "bg-green-100 text-green-800 border-green-200"
-                    : "bg-slate-100 text-slate-600 border-slate-200"
+                    ? "border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/60 dark:text-green-100"
+                    : "border-border bg-muted text-muted-foreground"
                 }`}
               >
                 {present ? "Present" : "Absent"}
@@ -93,8 +95,14 @@ export function AttendancePanel({
         })}
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className={`text-sm font-medium ${quorumMet ? "text-green-700" : "text-amber-700"}`}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p
+          className={`text-sm font-medium ${
+            quorumMet
+              ? "text-green-700 dark:text-green-400"
+              : "text-amber-700 dark:text-amber-400"
+          }`}
+        >
           {votingPresent} voting {votingPresent === 1 ? "member" : "members"} present — quorum:{" "}
           {quorumRequired}
           {quorumMet ? " ✓" : " (not met)"}
